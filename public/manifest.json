@@ -1,0 +1,11 @@
+{
+  "name": "루틴 트래커",
+  "short_name": "루틴",
+  "description": "매일의 루틴을 기록하고 성장하세요",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "orientation": "portrait",
+  "icons": [{ "src": "/vite.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
