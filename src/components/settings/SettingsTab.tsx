@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, Edit3, Trash2, Moon, Sun, Download, Send, Tag, ChevronRight, User, FileText } from 'lucide-react';
+import { Plus, Edit3, Trash2, Moon, Sun, Download, Send, Tag, ChevronRight, User, FileText, LogOut } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
 import { useTheme } from '../../hooks/useTheme';
+import { useAuth } from '../../contexts/AuthContext';
 import { exportJSON, exportCSV, exportMarkdown } from '../../utils/export';
 import { sendDiscordReport } from '../../utils/discord';
 import { formatDate } from '../../utils/date';
@@ -17,12 +18,13 @@ export default function SettingsTab() {
   const updateSettings = useRoutineStore((s) => s.updateSettings);
   const deleteRoutine = useRoutineStore((s) => s.deleteRoutine);
   const { darkMode, toggleDarkMode } = useTheme();
+  const { user, logout } = useAuth();
 
   const [showForm, setShowForm] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<Routine | undefined>();
   const [showKeywords, setShowKeywords] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState(settings.discordWebhookUrl);
-  const [username, setUsername] = useState(settings.username);
+  const [username, setUsername] = useState(settings.username || user?.displayName || '');
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<'success' | 'error' | null>(null);
 
@@ -52,11 +54,17 @@ export default function SettingsTab() {
       routines, 
       checks: record?.checks || {}, 
       reflection,
-      username: settings.username 
+      username: settings.username || user?.displayName || ''
     });
     setSendResult(ok ? 'success' : 'error');
     setSending(false);
     setTimeout(() => setSendResult(null), 3000);
+  };
+
+  const handleLogout = async () => {
+    if (confirm('로그아웃 하시겠습니까?')) {
+      await logout();
+    }
   };
 
   const activeRoutines = routines.filter((r) => !r.archived).sort((a, b) => a.order - b.order);
@@ -64,6 +72,28 @@ export default function SettingsTab() {
   return (
     <div className="px-4 pt-6 pb-4">
       <h1 className="text-2xl font-bold text-text-primary mb-6">설정</h1>
+
+      {/* 사용자 정보 */}
+      <section className="mb-6">
+        <div className="p-4 rounded-xl bg-surface-secondary border border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 font-bold text-lg">
+              {user?.displayName?.[0] || user?.email?.[0]?.toUpperCase() || '?'}
+            </div>
+            <div className="flex-1">
+              <div className="font-semibold text-text-primary">{user?.displayName || '사용자'}</div>
+              <div className="text-sm text-text-tertiary">{user?.email}</div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-colors"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
+        </div>
+      </section>
+
       <section className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold">루틴 관리</h2>
@@ -107,7 +137,7 @@ export default function SettingsTab() {
         <h2 className="text-lg font-semibold mb-3">Discord 연동</h2>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm text-text-secondary mb-1 flex items-center gap-1"><User size={14} />사용자 이름</label>
+            <label className="block text-sm text-text-secondary mb-1 flex items-center gap-1"><User size={14} />리포트 표시 이름</label>
             <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="예: 홍길동" className="w-full px-3 py-2 rounded-lg border border-border bg-surface-secondary text-text-primary text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
           <div>
