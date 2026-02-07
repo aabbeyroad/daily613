@@ -54,7 +54,8 @@ export default function SettingsTab() {
       routines, 
       checks: record?.checks || {}, 
       reflection,
-      username: settings.username || user?.displayName || ''
+      username: settings.username || user?.displayName || '',
+      records, // 월간 통계용
     });
     setSendResult(ok ? 'success' : 'error');
     setSending(false);
