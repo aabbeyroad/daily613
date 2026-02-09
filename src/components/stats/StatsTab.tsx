@@ -5,6 +5,7 @@ import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, getWeekDays, startOfMonth, endOfMonth } from '../../utils/date';
 import KeywordFilter from '../common/KeywordFilter';
 import Calendar from './Calendar';
+import WeeklyRoutineGrid from './WeeklyRoutineGrid';
 
 const LEVEL_COLORS = { none: '#94a3b8', done: '#22c55e', more: '#3b82f6', max: '#a855f7' };
 
@@ -31,7 +32,6 @@ export default function StatsTab() {
     const recordMap: Record<string, Record<string, string>> = {};
     records.forEach((r) => { recordMap[r.date] = r.checks; });
     
-    // 필터된 루틴만 고려한 streak 계산
     let currentStreak = 0;
     const checkDate = (date: Date): boolean => {
       const dateStr = formatDate(date);
@@ -40,14 +40,12 @@ export default function StatsTab() {
       return filteredRoutines.some((r) => record[r.id] && record[r.id] !== 'none');
     };
     
-    // 어제부터 역순으로 체크
     let d = new Date(today);
     d.setDate(d.getDate() - 1);
     while (checkDate(d)) {
       currentStreak++;
       d.setDate(d.getDate() - 1);
     }
-    // 오늘 체크
     if (checkDate(today)) currentStreak++;
     
     return currentStreak;
@@ -108,6 +106,8 @@ export default function StatsTab() {
           </div>
         ))}
       </div>
+
+      {/* 이번 주 점수 */}
       <div className="p-4 rounded-xl bg-surface-secondary border border-border mb-6">
         <div className="flex items-center justify-between">
           <div>
@@ -119,6 +119,14 @@ export default function StatsTab() {
           </div>
         </div>
       </div>
+
+      {/* 이번 주 루틴별 현황 */}
+      <div className="p-4 rounded-xl bg-surface-secondary border border-border mb-6">
+        <h3 className="font-semibold mb-4">이번 주 루틴 현황</h3>
+        <WeeklyRoutineGrid />
+      </div>
+
+      {/* 달성 단계 비율 */}
       {levelDistribution.length > 0 && (
         <div className="p-4 rounded-xl bg-surface-secondary border border-border mb-6">
           <h3 className="font-semibold mb-4">달성 단계 비율</h3>
@@ -145,6 +153,8 @@ export default function StatsTab() {
           </div>
         </div>
       )}
+
+      {/* 월간 캘린더 */}
       <div className="p-4 rounded-xl bg-surface-secondary border border-border mb-6">
         <h3 className="font-semibold mb-4">월간 캘린더</h3>
         <Calendar />
