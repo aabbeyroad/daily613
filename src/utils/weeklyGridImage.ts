@@ -58,7 +58,7 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
   ctx.fillStyle = TEXT_COLOR;
   ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.textBaseline = 'middle';
-  ctx.fillText('📊 이 주의 루틴현황', padding, padding + headerHeight / 2 - 4);
+  ctx.fillText('이 주의 루틴현황', padding, padding + headerHeight / 2 - 4);
 
   // Week range text
   const weekStart = format(weekDays[0], 'M/d');
@@ -167,9 +167,13 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
     legendX += 18 + ctx.measureText(item.label).width + 20;
   });
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
-      resolve(blob!);
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error('Canvas toBlob returned null'));
+      }
     }, 'image/png');
   });
 }

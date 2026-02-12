@@ -103,28 +103,51 @@ export const sendDiscordReport = async (
   };
 
   try {
-    // 주간 루틴현황 이미지 생성
-    const imageBlob = await generateWeeklyGridImage({
-      routines,
-      records: records || [],
-      date: new Date(date),
-    });
+    // 주간 루틴현황 이미지 생성 시도
+    let imageBlob: Blob | null = null;
+    try {
+      imageBlob = await generateWeeklyGridImage({
+        routines,
+        records: records || [],
+        date: new Date(date),
+      });
+    } catch (e) {
+      console.warn('주간 루틴 이미지 생성 실패:', e);
+    }
 
-    const formData = new FormData();
-    formData.append(
-      'payload_json',
-      JSON.stringify({
+    let res: Response;
+
+    if (imageBlob && imageBlob.size > 0) {
+      // 이미지 첨부하여 전송
+      console.log('이미지 생성 성공:', imageBlob.size, 'bytes');
+      const formData = new FormData();
+      const payload = {
         username: username || '루틴 트래커',
         embeds: [embed],
-        attachments: [{ id: 0, filename: 'weekly-routine.png' }],
-      })
-    );
-    formData.append('files[0]', imageBlob, 'weekly-routine.png');
+        attachments: [{ id: 0, filename: 'weekly-routine.png', description: '이 주의 루틴현황' }],
+      };
+      formData.append('payload_json', JSON.stringify(payload));
+      formData.append('files[0]', new File([imageBlob], 'weekly-routine.png', { type: 'image/png' }));
 
-    const res = await fetch(webhookUrl, {
-      method: 'POST',
-      body: formData,
-    });
+      res = await fetch(webhookUrl, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        console.error('Discord 전송 실패:', res.status, await res.text().catch(() => ''));
+      }
+    } else {
+      // 이미지 없이 텍스트만 전송 (폴백)
+      delete embed.image;
+      res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username || '루틴 트래커',
+          embeds: [embed],
+        }),
+      });
+    }
     return res.ok;
   } catch {
     return false;
