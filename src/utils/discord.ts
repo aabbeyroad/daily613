@@ -91,17 +91,6 @@ export const sendDiscordReport = async (
     }
   }
 
-  const embed = {
-    title: `📅 일일 리포트 — ${date}`,
-    description: `📆 이번 달 **${monthlyReportCount}번째** 리포트`,
-    color: rate >= 80 ? 0x22c55e : rate >= 50 ? 0x3b82f6 : 0xef4444,
-    fields,
-    image: { url: 'attachment://weekly-routine.png' },
-    footer: { text: `${username || '루틴 트래커'} • ${currentMonth}` },
-    timestamp: new Date().toISOString(),
-    ...(username && { author: { name: username } }),
-  };
-
   try {
     // 주간 루틴현황 이미지 생성 시도
     let imageBlob: Blob | null = null;
@@ -115,19 +104,33 @@ export const sendDiscordReport = async (
       console.warn('주간 루틴 이미지 생성 실패:', e);
     }
 
+    const hasImage = imageBlob && imageBlob.size > 0;
+
+    const embed = {
+      title: `📅 일일 리포트 — ${date}`,
+      description: `📆 이번 달 **${monthlyReportCount}번째** 리포트`,
+      color: rate >= 80 ? 0x22c55e : rate >= 50 ? 0x3b82f6 : 0xef4444,
+      fields,
+      ...(hasImage && { image: { url: 'attachment://weekly-routine.png' } }),
+      footer: { text: `${username || '루틴 트래커'} • ${currentMonth}` },
+      timestamp: new Date().toISOString(),
+      ...(username && { author: { name: username } }),
+    };
+
     let res: Response;
 
-    if (imageBlob && imageBlob.size > 0) {
-      // 이미지 첨부하여 전송
-      console.log('이미지 생성 성공:', imageBlob.size, 'bytes');
+    if (hasImage) {
+      console.log('이미지 생성 성공:', imageBlob!.size, 'bytes');
       const formData = new FormData();
-      const payload = {
-        username: username || '루틴 트래커',
-        embeds: [embed],
-        attachments: [{ id: 0, filename: 'weekly-routine.png', description: '이 주의 루틴현황' }],
-      };
-      formData.append('payload_json', JSON.stringify(payload));
-      formData.append('files[0]', new File([imageBlob], 'weekly-routine.png', { type: 'image/png' }));
+      formData.append(
+        'payload_json',
+        JSON.stringify({
+          username: username || '루틴 트래커',
+          embeds: [embed],
+          attachments: [{ id: 0, filename: 'weekly-routine.png', description: '이 주의 루틴현황' }],
+        })
+      );
+      formData.append('files[0]', new File([imageBlob!], 'weekly-routine.png', { type: 'image/png' }));
 
       res = await fetch(webhookUrl, {
         method: 'POST',
@@ -137,8 +140,6 @@ export const sendDiscordReport = async (
         console.error('Discord 전송 실패:', res.status, await res.text().catch(() => ''));
       }
     } else {
-      // 이미지 없이 텍스트만 전송 (폴백)
-      delete embed.image;
       res = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
