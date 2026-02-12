@@ -1,4 +1,5 @@
 import type { Routine, CheckLevel, Reflection, DailyRecord } from '../types';
+import { generateWeeklyGridImage } from './weeklyGridImage';
 
 interface ReportData {
   date: string;
@@ -95,19 +96,34 @@ export const sendDiscordReport = async (
     description: `📆 이번 달 **${monthlyReportCount}번째** 리포트`,
     color: rate >= 80 ? 0x22c55e : rate >= 50 ? 0x3b82f6 : 0xef4444,
     fields,
+    image: { url: 'attachment://weekly-routine.png' },
     footer: { text: `${username || '루틴 트래커'} • ${currentMonth}` },
     timestamp: new Date().toISOString(),
     ...(username && { author: { name: username } }),
   };
 
   try {
-    const res = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    // 주간 루틴현황 이미지 생성
+    const imageBlob = await generateWeeklyGridImage({
+      routines,
+      records: records || [],
+      date: new Date(date),
+    });
+
+    const formData = new FormData();
+    formData.append(
+      'payload_json',
+      JSON.stringify({
         username: username || '루틴 트래커',
         embeds: [embed],
-      }),
+        attachments: [{ id: 0, filename: 'weekly-routine.png' }],
+      })
+    );
+    formData.append('files[0]', imageBlob, 'weekly-routine.png');
+
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      body: formData,
     });
     return res.ok;
   } catch {
