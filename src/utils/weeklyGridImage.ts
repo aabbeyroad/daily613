@@ -193,7 +193,7 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
   ctx.fillText('전체', padding, dailyRateY + dailyRateRowHeight / 2);
 
   // Daily rate values
-  weekDays.forEach((day, i) => {
+  weekDays.forEach((_day, i) => {
     const x = gridStartX + i * (cellWidth + cellGap);
     const rate = dailyRates[i];
 
