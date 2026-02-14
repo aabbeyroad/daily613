@@ -26,7 +26,7 @@ export default function SettingsTab() {
   const [webhookUrl, setWebhookUrl] = useState(settings.discordWebhookUrl);
   const [username, setUsername] = useState(settings.username || user?.displayName || '');
   const [sending, setSending] = useState(false);
-  const [sendResult, setSendResult] = useState<'success' | 'error' | null>(null);
+  const [sendResult, setSendResult] = useState<'success' | 'success-noimage' | 'error' | null>(null);
 
   const handleEdit = (routine: Routine) => { setEditingRoutine(routine); setShowForm(true); };
   const handleDelete = (routine: Routine) => { if (confirm(`"${routine.name}" 루틴을 삭제하시겠습니까?`)) deleteRoutine(routine.id); };
@@ -49,15 +49,19 @@ export default function SettingsTab() {
     const today = formatDate(new Date());
     const record = records.find((r) => r.date === today);
     const reflection = reflections.find((r) => r.date === today && r.type === 'daily');
-    const ok = await sendDiscordReport(settings.discordWebhookUrl, { 
-      date: today, 
-      routines, 
-      checks: record?.checks || {}, 
+    const result = await sendDiscordReport(settings.discordWebhookUrl, {
+      date: today,
+      routines,
+      checks: record?.checks || {},
       reflection,
       username: settings.username || user?.displayName || '',
       records, // 월간 통계용
     });
-    setSendResult(ok ? 'success' : 'error');
+    if (result.ok) {
+      setSendResult(result.hasImage ? 'success' : 'success-noimage');
+    } else {
+      setSendResult('error');
+    }
     setSending(false);
     setTimeout(() => setSendResult(null), 3000);
   };
@@ -149,7 +153,8 @@ export default function SettingsTab() {
           {settings.discordWebhookUrl && (
             <button onClick={handleSendReport} disabled={sending} className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#5865F2] text-white font-medium text-sm disabled:opacity-50 active:scale-[0.98] transition-all"><Send size={16} />{sending ? '전송 중...' : '오늘의 리포트 전송'}</button>
           )}
-          {sendResult === 'success' && <p className="text-done text-sm text-center">전송 완료!</p>}
+          {sendResult === 'success' && <p className="text-done text-sm text-center">📸 이미지 포함 전송 완료!</p>}
+          {sendResult === 'success-noimage' && <p className="text-yellow-500 text-sm text-center">⚠️ 텍스트만 전송됨 (이미지 생성 실패)</p>}
           {sendResult === 'error' && <p className="text-red-500 text-sm text-center">전송 실패. URL을 확인해주세요.</p>}
         </div>
       </section>

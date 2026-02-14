@@ -10,10 +10,16 @@ interface ReportData {
   records?: DailyRecord[]; // 월간 통계용
 }
 
+export interface DiscordReportResult {
+  ok: boolean;
+  hasImage: boolean;
+  error?: string;
+}
+
 export const sendDiscordReport = async (
   webhookUrl: string,
   data: ReportData
-): Promise<boolean> => {
+): Promise<DiscordReportResult> => {
   const { date, routines, checks, reflection, username, records } = data;
   const activeRoutines = routines.filter((r) => !r.archived);
   const total = activeRoutines.length;
@@ -101,7 +107,7 @@ export const sendDiscordReport = async (
         date: new Date(date),
       });
     } catch (e) {
-      console.warn('주간 루틴 이미지 생성 실패:', e);
+      console.warn('주간 루틴 이미지 생성 실패:', e instanceof Error ? e.message : e);
     }
 
     const hasImage = imageBlob && imageBlob.size > 0;
@@ -137,9 +143,13 @@ export const sendDiscordReport = async (
         body: formData,
       });
       if (!res.ok) {
-        console.error('Discord 전송 실패:', res.status, await res.text().catch(() => ''));
+        const errText = await res.text().catch(() => '');
+        console.error('Discord 전송 실패:', res.status, errText);
+        return { ok: false, hasImage: true, error: `${res.status}: ${errText}` };
       }
+      return { ok: true, hasImage: true };
     } else {
+      console.log('이미지 없이 텍스트만 전송');
       res = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -148,9 +158,10 @@ export const sendDiscordReport = async (
           embeds: [embed],
         }),
       });
+      return { ok: res.ok, hasImage: false };
     }
-    return res.ok;
-  } catch {
-    return false;
+  } catch (e) {
+    console.error('Discord 전송 예외:', e);
+    return { ok: false, hasImage: false, error: e instanceof Error ? e.message : String(e) };
   }
 };
