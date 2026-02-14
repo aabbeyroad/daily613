@@ -47,7 +47,7 @@ export default function RoutineCheckItem({ routine, currentLevel, onToggle }: Pr
             <button
               key={level.key}
               onClick={() => handleClick(level.key)}
-              className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all active:scale-95 ${isActive ? `${level.bg} border-transparent text-white` : `border-border bg-surface ${level.color}`}`}
+              className={`flex-1 py-1.5 px-3 rounded-lg border-2 transition-all active:scale-95 ${isActive ? `${level.bg} border-transparent text-white` : `border-border bg-surface ${level.color}`}`}
             >
               <div className="flex items-center justify-center gap-1.5">
                 {isActive && <Check size={14} strokeWidth={3} />}
