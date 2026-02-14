@@ -21,6 +21,12 @@ interface GridImageData {
   date: Date;
 }
 
+function getRateColor(rate: number): string {
+  if (rate >= 80) return LEVEL_COLORS.done;
+  if (rate >= 50) return LEVEL_COLORS.more;
+  return TEXT_SECONDARY;
+}
+
 export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
   const { routines, records, date } = data;
   const activeRoutines = routines.filter((r) => !r.archived).sort((a, b) => a.order - b.order);
@@ -34,13 +40,43 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
   const rowHeight = 20;
   const cellGap = 3;
   const nameColWidth = 100;
+  const rateColWidth = 36;
+  const dailyRateRowHeight = 20;
   const legendHeight = 26;
 
   const routineCount = activeRoutines.length;
   const cellWidth = 60;
   const gridWidth = 7 * (cellWidth + cellGap) - cellGap;
-  const canvasWidth = padding * 2 + nameColWidth + 12 + gridWidth;
-  const canvasHeight = padding + headerHeight + dayHeaderHeight + routineCount * (rowHeight + cellGap) - cellGap + 10 + legendHeight + padding;
+  const canvasWidth = padding * 2 + nameColWidth + 12 + gridWidth + 8 + rateColWidth;
+  const canvasHeight = padding + headerHeight + dayHeaderHeight + routineCount * (rowHeight + cellGap) - cellGap + 6 + dailyRateRowHeight + 10 + legendHeight + padding;
+
+  // Pre-calculate rates
+  const pastDays = weekDays.filter((d) => formatDate(d) <= todayStr);
+  const pastDayCount = pastDays.length;
+
+  const getLevel = (routineId: string, day: Date): CheckLevel => {
+    const dateStr = formatDate(day);
+    const record = records.find((r) => r.date === dateStr);
+    return (record?.checks[routineId] || 'none') as CheckLevel;
+  };
+
+  // Routine rates (right column) - Mon to today only
+  const routineRates: Record<string, number> = {};
+  if (pastDayCount > 0) {
+    activeRoutines.forEach((routine) => {
+      const done = pastDays.filter((day) => getLevel(routine.id, day) !== 'none').length;
+      routineRates[routine.id] = Math.round((done / pastDayCount) * 100);
+    });
+  }
+
+  // Daily rates (bottom row)
+  const dailyRates: (number | null)[] = weekDays.map((day) => {
+    if (formatDate(day) > todayStr) return null;
+    const total = activeRoutines.length;
+    if (total === 0) return null;
+    const done = activeRoutines.filter((r) => getLevel(r.id, day) !== 'none').length;
+    return Math.round((done / total) * 100);
+  });
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth * 2; // 2x for retina
@@ -64,6 +100,14 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
 
   const gridStartX = padding + nameColWidth + 12;
   const gridStartY = padding + headerHeight;
+  const rateColX = gridStartX + gridWidth + 8;
+
+  // Rate column header
+  ctx.fillStyle = TEXT_SECONDARY;
+  ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('달성', rateColX + rateColWidth / 2, gridStartY + dayHeaderHeight / 2);
 
   // Day headers
   weekDays.forEach((day, i) => {
@@ -102,8 +146,7 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
     weekDays.forEach((day, di) => {
       const x = gridStartX + di * (cellWidth + cellGap);
       const dateStr = formatDate(day);
-      const record = records.find((r) => r.date === dateStr);
-      const level = (record?.checks[routine.id] || 'none') as CheckLevel;
+      const level = getLevel(routine.id, day);
       const isToday = dateStr === todayStr;
 
       // Today ring
@@ -121,10 +164,56 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
       roundRect(ctx, x, y, cellWidth, rowHeight, 4);
       ctx.fill();
     });
+
+    // Routine rate (right column)
+    const rate = routineRates[routine.id] ?? 0;
+    ctx.fillStyle = getRateColor(rate);
+    ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${rate}%`, rateColX + rateColWidth / 2, y + rowHeight / 2);
+    ctx.textAlign = 'left';
   });
 
+  // Daily rate row (bottom)
+  const dailyRateY = rowStartY + routineCount * (rowHeight + cellGap) + 3;
+
+  // Divider above daily rates
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(gridStartX, dailyRateY - 2);
+  ctx.lineTo(gridStartX + gridWidth, dailyRateY - 2);
+  ctx.stroke();
+
+  // "전체" label
+  ctx.fillStyle = TEXT_SECONDARY;
+  ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('전체', padding, dailyRateY + dailyRateRowHeight / 2);
+
+  // Daily rate values
+  weekDays.forEach((day, i) => {
+    const x = gridStartX + i * (cellWidth + cellGap);
+    const rate = dailyRates[i];
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    if (rate !== null) {
+      ctx.fillStyle = getRateColor(rate);
+      ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(`${rate}%`, x + cellWidth / 2, dailyRateY + dailyRateRowHeight / 2);
+    } else {
+      ctx.fillStyle = TEXT_SECONDARY;
+      ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText('-', x + cellWidth / 2, dailyRateY + dailyRateRowHeight / 2);
+    }
+  });
+  ctx.textAlign = 'left';
+
   // Legend
-  const legendY = rowStartY + routineCount * (rowHeight + cellGap) + 12;
+  const legendY = dailyRateY + dailyRateRowHeight + 8;
   const legendItems: { label: string; color: string }[] = [
     { label: '미완료', color: LEVEL_COLORS.none },
     { label: 'Done', color: LEVEL_COLORS.done },
@@ -132,7 +221,7 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
     { label: 'Max', color: LEVEL_COLORS.max },
   ];
 
-  // Divider
+  // Divider above legend
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 1;
   ctx.beginPath();
