@@ -4,6 +4,7 @@ import { addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, formatDisplayDate, getWeekKey, getWeekDays } from '../../utils/date';
 import ReflectionForm from './ReflectionForm';
+import ConfirmDialog from '../common/ConfirmDialog';
 import type { Reflection } from '../../types';
 
 export default function ReflectionTab() {
@@ -13,6 +14,7 @@ export default function ReflectionTab() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showForm, setShowForm] = useState(false);
   const [editingReflection, setEditingReflection] = useState<Reflection | undefined>();
+  const [confirmTarget, setConfirmTarget] = useState<Reflection | null>(null);
 
   const dateKey = viewType === 'daily' ? formatDate(currentDate) : getWeekKey(currentDate);
   const weekDays = getWeekDays(currentDate);
@@ -26,20 +28,20 @@ export default function ReflectionTab() {
   };
 
   const handleEdit = (reflection: Reflection) => { setEditingReflection(reflection); setShowForm(true); };
-  const handleDelete = (reflection: Reflection) => { if (confirm('이 회고를 삭제하시겠습니까?')) deleteReflection(reflection.id); };
+  const handleDelete = (reflection: Reflection) => { setConfirmTarget(reflection); };
   const handleNew = () => { setEditingReflection(undefined); setShowForm(true); };
 
   return (
     <div className="px-4 pt-6 pb-4">
       <h1 className="text-2xl font-bold text-text-primary mb-6">회고</h1>
-      <div className="flex bg-surface-secondary rounded-xl p-1 mb-4 border border-border">
-        <button onClick={() => setViewType('daily')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${viewType === 'daily' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-tertiary'}`}>일간 회고</button>
-        <button onClick={() => setViewType('weekly')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${viewType === 'weekly' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-tertiary'}`}>주간 회고</button>
+      <div className="flex bg-surface-secondary rounded-xl p-1 mb-4 border border-border" role="tablist">
+        <button onClick={() => setViewType('daily')} role="tab" aria-selected={viewType === 'daily'} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${viewType === 'daily' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-tertiary'}`}>일간 회고</button>
+        <button onClick={() => setViewType('weekly')} role="tab" aria-selected={viewType === 'weekly'} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${viewType === 'weekly' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-tertiary'}`}>주간 회고</button>
       </div>
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => navigate('prev')} className="p-1.5 rounded-lg hover:bg-surface-tertiary"><ChevronLeft size={20} /></button>
+        <button onClick={() => navigate('prev')} aria-label="이전 기간" className="p-2.5 rounded-lg hover:bg-surface-tertiary"><ChevronLeft size={20} /></button>
         <span className="font-medium text-sm text-text-primary">{displayLabel}</span>
-        <button onClick={() => navigate('next')} className="p-1.5 rounded-lg hover:bg-surface-tertiary"><ChevronRight size={20} /></button>
+        <button onClick={() => navigate('next')} aria-label="다음 기간" className="p-2.5 rounded-lg hover:bg-surface-tertiary"><ChevronRight size={20} /></button>
       </div>
       <div className="mb-6 p-4 rounded-xl bg-surface-secondary border border-border">
         {currentReflection ? (
@@ -47,8 +49,8 @@ export default function ReflectionTab() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm">KPT 회고</h3>
               <div className="flex gap-1">
-                <button onClick={() => handleEdit(currentReflection)} className="p-1.5 rounded-lg hover:bg-surface-tertiary"><Edit3 size={14} className="text-text-secondary" /></button>
-                <button onClick={() => handleDelete(currentReflection)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 size={14} className="text-red-500" /></button>
+                <button onClick={() => handleEdit(currentReflection)} aria-label="회고 수정" className="p-2.5 rounded-lg hover:bg-surface-tertiary"><Edit3 size={16} className="text-text-secondary" /></button>
+                <button onClick={() => handleDelete(currentReflection)} aria-label="회고 삭제" className="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 size={16} className="text-red-500" /></button>
               </div>
             </div>
             <div className="space-y-3">
@@ -73,8 +75,8 @@ export default function ReflectionTab() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-text-tertiary">{ref.date}</span>
                   <div className="flex gap-1">
-                    <button onClick={() => handleEdit(ref)} className="p-1 rounded hover:bg-surface-tertiary"><Edit3 size={12} className="text-text-tertiary" /></button>
-                    <button onClick={() => handleDelete(ref)} className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 size={12} className="text-red-500" /></button>
+                    <button onClick={() => handleEdit(ref)} aria-label="회고 수정" className="p-2 rounded hover:bg-surface-tertiary"><Edit3 size={14} className="text-text-tertiary" /></button>
+                    <button onClick={() => handleDelete(ref)} aria-label="회고 삭제" className="p-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 size={14} className="text-red-500" /></button>
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -88,6 +90,16 @@ export default function ReflectionTab() {
         </div>
       )}
       {showForm && <ReflectionForm date={dateKey} type={viewType} existing={editingReflection} onClose={() => { setShowForm(false); setEditingReflection(undefined); }} />}
+      {confirmTarget && (
+        <ConfirmDialog
+          title="회고 삭제"
+          message="이 회고를 삭제하시겠습니까?"
+          confirmLabel="삭제"
+          variant="danger"
+          onConfirm={() => { deleteReflection(confirmTarget.id); setConfirmTarget(null); }}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
     </div>
   );
 }

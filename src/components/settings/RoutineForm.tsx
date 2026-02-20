@@ -34,11 +34,11 @@ export default function RoutineForm({ routine, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-labelledby="routine-form-title" onClick={onClose}>
       <div className="bg-surface rounded-2xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">{routine ? '루틴 수정' : '새 루틴'}</h2>
-          <button onClick={onClose} className="p-1"><X size={20} /></button>
+          <h2 id="routine-form-title" className="text-lg font-bold">{routine ? '루틴 수정' : '새 루틴'}</h2>
+          <button onClick={onClose} aria-label="닫기" className="p-2.5"><X size={20} /></button>
         </div>
         <div className="space-y-4">
           <div>
