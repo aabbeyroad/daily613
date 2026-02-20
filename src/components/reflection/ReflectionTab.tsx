@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Plus, Edit3, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { addWeeks, subWeeks, addDays, subDays, format } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, formatDisplayDate, getWeekKey, getWeekDays } from '../../utils/date';
 import ReflectionForm from './ReflectionForm';
@@ -20,29 +19,6 @@ export default function ReflectionTab() {
   const displayLabel = viewType === 'daily' ? formatDisplayDate(currentDate) : `${formatDate(weekDays[0])} ~ ${formatDate(weekDays[6])}`;
   const currentReflection = useMemo(() => reflections.find((r) => r.date === dateKey && r.type === viewType), [reflections, dateKey, viewType]);
   const allReflections = useMemo(() => reflections.filter((r) => r.type === viewType).sort((a, b) => b.date.localeCompare(a.date)), [reflections, viewType]);
-
-  // 주간 회고 시: 해당 주의 일간 회고들을 K/P/T별로 모아서 보여주기
-  const weeklyDailyKPT = useMemo(() => {
-    if (viewType !== 'weekly') return null;
-    const weekDateStrs = weekDays.map((d) => formatDate(d));
-    const dailyReflections = reflections
-      .filter((r) => r.type === 'daily' && weekDateStrs.includes(r.date))
-      .sort((a, b) => a.date.localeCompare(b.date));
-    if (dailyReflections.length === 0) return null;
-
-    const keeps: { date: string; text: string }[] = [];
-    const problems: { date: string; text: string }[] = [];
-    const tries: { date: string; text: string }[] = [];
-
-    dailyReflections.forEach((r) => {
-      const dayLabel = format(new Date(r.date), 'M/d (EEE)', { locale: ko });
-      if (r.keep) keeps.push({ date: dayLabel, text: r.keep });
-      if (r.problem) problems.push({ date: dayLabel, text: r.problem });
-      if (r.try) tries.push({ date: dayLabel, text: r.try });
-    });
-
-    return { keeps, problems, tries, count: dailyReflections.length };
-  }, [viewType, weekDays, reflections]);
 
   const navigate = (dir: 'prev' | 'next') => {
     if (viewType === 'daily') setCurrentDate((d) => (dir === 'prev' ? subDays(d, 1) : addDays(d, 1)));
@@ -65,54 +41,6 @@ export default function ReflectionTab() {
         <span className="font-medium text-sm text-text-primary">{displayLabel}</span>
         <button onClick={() => navigate('next')} className="p-1.5 rounded-lg hover:bg-surface-tertiary"><ChevronRight size={20} /></button>
       </div>
-      {/* 주간 회고 시: 이번 주 일간 회고 KPT 요약 */}
-      {viewType === 'weekly' && weeklyDailyKPT && (
-        <div className="mb-4 p-4 rounded-xl bg-surface-secondary border border-border">
-          <h3 className="font-semibold text-sm text-text-primary mb-3">이번 주 일간 회고 요약 ({weeklyDailyKPT.count}건)</h3>
-          <div className="space-y-3">
-            {weeklyDailyKPT.keeps.length > 0 && (
-              <div>
-                <div className="text-xs font-bold text-done mb-1.5">Keep - 잘한 것</div>
-                <div className="space-y-1.5">
-                  {weeklyDailyKPT.keeps.map((item, i) => (
-                    <div key={i} className="flex gap-2 text-sm">
-                      <span className="text-text-tertiary text-xs shrink-0 pt-0.5">{item.date}</span>
-                      <p className="text-text-primary whitespace-pre-wrap">{item.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {weeklyDailyKPT.problems.length > 0 && (
-              <div>
-                <div className="text-xs font-bold text-red-500 mb-1.5">Problem - 아쉬운 점</div>
-                <div className="space-y-1.5">
-                  {weeklyDailyKPT.problems.map((item, i) => (
-                    <div key={i} className="flex gap-2 text-sm">
-                      <span className="text-text-tertiary text-xs shrink-0 pt-0.5">{item.date}</span>
-                      <p className="text-text-primary whitespace-pre-wrap">{item.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {weeklyDailyKPT.tries.length > 0 && (
-              <div>
-                <div className="text-xs font-bold text-more mb-1.5">Try - 시도할 것</div>
-                <div className="space-y-1.5">
-                  {weeklyDailyKPT.tries.map((item, i) => (
-                    <div key={i} className="flex gap-2 text-sm">
-                      <span className="text-text-tertiary text-xs shrink-0 pt-0.5">{item.date}</span>
-                      <p className="text-text-primary whitespace-pre-wrap">{item.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="mb-6 p-4 rounded-xl bg-surface-secondary border border-border">
         {currentReflection ? (
           <div>
