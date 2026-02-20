@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function AuthPage() {
@@ -68,79 +68,106 @@ export default function AuthPage() {
   return (
     <div className="min-h-dvh bg-surface flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">✓</span>
+        {/* Hero */}
+        <div className="text-center mb-10">
+          <div className="w-20 h-20 rounded-[22px] bg-primary-600 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-primary-600/25">
+            <span className="text-white font-bold text-2xl tracking-tight">613</span>
           </div>
-          <h1 className="text-2xl font-bold text-text-primary">루틴 트래커</h1>
-          <p className="text-text-tertiary mt-1">매일의 루틴을 기록하고 성장하세요</p>
+          <h1 className="text-[28px] font-bold text-text-primary tracking-tight">데일리613</h1>
+          <p className="text-text-tertiary text-[15px] mt-1.5 leading-relaxed">맞벌이 육아인의 주체적인 일상</p>
+        </div>
+
+        {/* Auth Toggle */}
+        <div className="flex p-1 rounded-xl bg-surface-secondary mb-6">
+          <button
+            onClick={() => { setIsLogin(true); setError(''); }}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+              isLogin
+                ? 'bg-surface text-text-primary shadow-sm'
+                : 'text-text-tertiary'
+            }`}
+          >
+            로그인
+          </button>
+          <button
+            onClick={() => { setIsLogin(false); setError(''); }}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+              !isLogin
+                ? 'bg-surface text-text-primary shadow-sm'
+                : 'text-text-tertiary'
+            }`}
+          >
+            회원가입
+          </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           {!isLogin && (
-            <div className="relative">
-              <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1.5 ml-1">이름</label>
               <input
                 type="text"
-                placeholder="이름"
+                placeholder="홍길동"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary text-[15px] placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
               />
             </div>
           )}
 
-          <div className="relative">
-            <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1.5 ml-1">이메일</label>
             <input
               type="email"
-              placeholder="이메일"
+              placeholder="example@email.com"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary text-[15px] placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
               required
             />
           </div>
 
-          <div className="relative">
-            <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-            <input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="비밀번호"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full pl-10 pr-12 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1.5 ml-1">비밀번호</label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="6자 이상"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary text-[15px] placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all pr-12"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-tertiary"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           {error && (
-            <p className="text-red-500 text-sm text-center">{error}</p>
+            <p className="text-red-500 text-sm text-center py-1" role="alert">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-primary-600 text-white font-semibold disabled:opacity-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-xl bg-primary-600 text-white font-semibold text-[15px] disabled:opacity-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-2 shadow-sm shadow-primary-600/20"
           >
             {loading ? <Loader2 size={20} className="animate-spin" /> : null}
-            {isLogin ? '로그인' : '회원가입'}
+            {isLogin ? '로그인' : '가입하기'}
           </button>
         </form>
 
         {/* Divider */}
-        <div className="flex items-center gap-4 my-6">
+        <div className="flex items-center gap-4 my-7">
           <div className="flex-1 h-px bg-border" />
-          <span className="text-text-tertiary text-sm">또는</span>
+          <span className="text-text-tertiary text-xs">또는</span>
           <div className="flex-1 h-px bg-border" />
         </div>
 
@@ -148,7 +175,7 @@ export default function AuthPage() {
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="w-full py-3 rounded-xl border border-border bg-surface-secondary text-text-primary font-medium disabled:opacity-50 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+          className="w-full py-3.5 rounded-xl border border-border bg-surface text-text-primary font-medium text-[15px] disabled:opacity-50 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-sm"
         >
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -159,15 +186,9 @@ export default function AuthPage() {
           Google로 계속하기
         </button>
 
-        {/* Toggle */}
-        <p className="text-center mt-6 text-text-secondary">
-          {isLogin ? '계정이 없으신가요?' : '이미 계정이 있으신가요?'}{' '}
-          <button
-            onClick={() => { setIsLogin(!isLogin); setError(''); }}
-            className="text-primary-600 font-semibold"
-          >
-            {isLogin ? '회원가입' : '로그인'}
-          </button>
+        {/* Footer */}
+        <p className="text-center mt-8 text-[13px] text-text-tertiary">
+          Daily613으로 매일의 루틴을 기록하세요
         </p>
       </div>
     </div>

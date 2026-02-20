@@ -13,6 +13,29 @@ interface Props {
   onClose: () => void;
 }
 
+function DailySummaryBlock({ items, color }: { items: { date: string; text: string }[]; color: string }) {
+  const [open, setOpen] = useState(true);
+  if (items.length === 0) return null;
+  return (
+    <div className="mb-1.5 p-2 rounded-lg bg-surface-tertiary/50 border border-border/50">
+      <button onClick={() => setOpen(!open)} className="flex items-center justify-between w-full text-left">
+        <span className={`text-[10px] font-semibold ${color}`}>이번 주 일간 회고 ({items.length}건)</span>
+        {open ? <ChevronUp size={12} className="text-text-tertiary" /> : <ChevronDown size={12} className="text-text-tertiary" />}
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-0.5">
+          {items.map((item, i) => (
+            <div key={i} className="flex gap-1.5 text-[11px]">
+              <span className="text-text-tertiary shrink-0">{item.date}</span>
+              <p className="text-text-secondary whitespace-pre-wrap line-clamp-2">{item.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ReflectionForm({ date, type, existing, onClose }: Props) {
   const addReflection = useRoutineStore((s) => s.addReflection);
   const updateReflection = useRoutineStore((s) => s.updateReflection);
@@ -20,9 +43,8 @@ export default function ReflectionForm({ date, type, existing, onClose }: Props)
   const [keep, setKeep] = useState(existing?.keep || '');
   const [problem, setProblem] = useState(existing?.problem || '');
   const [tryText, setTryText] = useState(existing?.try || '');
-  const [showDailySummary, setShowDailySummary] = useState(true);
 
-  // 주간 회고 시: 해당 주의 일간 회고들을 K/P/T별로 모아서 보여주기
+  // 주간 회고 시: 해당 주의 일간 회고들을 K/P/T별로 분리
   const weeklyDailyKPT = useMemo(() => {
     if (type !== 'weekly') return null;
     const weekDays = getWeekDays(new Date(date));
@@ -43,7 +65,7 @@ export default function ReflectionForm({ date, type, existing, onClose }: Props)
       if (r.try) tries.push({ date: dayLabel, text: r.try });
     });
 
-    return { keeps, problems, tries, count: dailyReflections.length };
+    return { keeps, problems, tries };
   }, [type, date, reflections]);
 
   const handleSubmit = () => {
@@ -64,74 +86,24 @@ export default function ReflectionForm({ date, type, existing, onClose }: Props)
           <button onClick={onClose} aria-label="닫기" className="p-2.5"><X size={20} /></button>
         </div>
 
-        {/* 주간 회고 시: 이번 주 일간 회고 KPT 요약 */}
-        {weeklyDailyKPT && (
-          <div className="mb-4 p-3 rounded-xl bg-surface-secondary border border-border">
-            <button
-              onClick={() => setShowDailySummary(!showDailySummary)}
-              className="flex items-center justify-between w-full text-left"
-            >
-              <h3 className="font-semibold text-xs text-text-secondary">이번 주 일간 회고 ({weeklyDailyKPT.count}건)</h3>
-              {showDailySummary ? <ChevronUp size={16} className="text-text-tertiary" /> : <ChevronDown size={16} className="text-text-tertiary" />}
-            </button>
-            {showDailySummary && (
-              <div className="mt-2.5 space-y-2.5">
-                {weeklyDailyKPT.keeps.length > 0 && (
-                  <div>
-                    <div className="text-xs font-bold text-done mb-1">Keep</div>
-                    <div className="space-y-1">
-                      {weeklyDailyKPT.keeps.map((item, i) => (
-                        <div key={i} className="flex gap-1.5 text-xs">
-                          <span className="text-text-tertiary shrink-0">{item.date}</span>
-                          <p className="text-text-secondary whitespace-pre-wrap">{item.text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {weeklyDailyKPT.problems.length > 0 && (
-                  <div>
-                    <div className="text-xs font-bold text-red-500 mb-1">Problem</div>
-                    <div className="space-y-1">
-                      {weeklyDailyKPT.problems.map((item, i) => (
-                        <div key={i} className="flex gap-1.5 text-xs">
-                          <span className="text-text-tertiary shrink-0">{item.date}</span>
-                          <p className="text-text-secondary whitespace-pre-wrap">{item.text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {weeklyDailyKPT.tries.length > 0 && (
-                  <div>
-                    <div className="text-xs font-bold text-more mb-1">Try</div>
-                    <div className="space-y-1">
-                      {weeklyDailyKPT.tries.map((item, i) => (
-                        <div key={i} className="flex gap-1.5 text-xs">
-                          <span className="text-text-tertiary shrink-0">{item.date}</span>
-                          <p className="text-text-secondary whitespace-pre-wrap">{item.text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
         <div className="space-y-4">
+          {/* Keep */}
           <div>
+            {weeklyDailyKPT && <DailySummaryBlock items={weeklyDailyKPT.keeps} color="text-done" />}
             <label className="block text-sm font-bold text-done mb-1">Keep - 잘한 것</label>
-            <textarea value={keep} onChange={(e) => setKeep(e.target.value)} placeholder="이번 주 잘한 것, 계속할 것..." rows={3} className="w-full px-3 py-2 rounded-lg border border-border bg-surface-secondary text-text-primary text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            <textarea value={keep} onChange={(e) => setKeep(e.target.value)} placeholder={type === 'weekly' ? '이번 주 잘한 것, 계속할 것...' : '오늘 잘한 것...'} rows={3} className="w-full px-3 py-2 rounded-lg border border-border bg-surface-secondary text-text-primary text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
+          {/* Problem */}
           <div>
+            {weeklyDailyKPT && <DailySummaryBlock items={weeklyDailyKPT.problems} color="text-red-500" />}
             <label className="block text-sm font-bold text-red-500 mb-1">Problem - 아쉬운 점</label>
-            <textarea value={problem} onChange={(e) => setProblem(e.target.value)} placeholder="아쉬웠던 점, 문제점..." rows={3} className="w-full px-3 py-2 rounded-lg border border-border bg-surface-secondary text-text-primary text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            <textarea value={problem} onChange={(e) => setProblem(e.target.value)} placeholder={type === 'weekly' ? '아쉬웠던 점, 문제점...' : '아쉬웠던 점...'} rows={3} className="w-full px-3 py-2 rounded-lg border border-border bg-surface-secondary text-text-primary text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
+          {/* Try */}
           <div>
+            {weeklyDailyKPT && <DailySummaryBlock items={weeklyDailyKPT.tries} color="text-more" />}
             <label className="block text-sm font-bold text-more mb-1">Try - 시도할 것</label>
-            <textarea value={tryText} onChange={(e) => setTryText(e.target.value)} placeholder="다음에 시도해볼 것..." rows={3} className="w-full px-3 py-2 rounded-lg border border-border bg-surface-secondary text-text-primary text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            <textarea value={tryText} onChange={(e) => setTryText(e.target.value)} placeholder={type === 'weekly' ? '다음 주에 시도해볼 것...' : '다음에 시도해볼 것...'} rows={3} className="w-full px-3 py-2 rounded-lg border border-border bg-surface-secondary text-text-primary text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
         </div>
         <button onClick={handleSubmit} className="w-full mt-6 py-3 rounded-xl bg-primary-600 text-white font-semibold active:scale-[0.98] transition-all">{existing ? '수정하기' : '저장하기'}</button>
