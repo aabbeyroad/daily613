@@ -29,8 +29,11 @@ export interface Reflection {
   updatedAt: string;
 }
 
+export type ColorTheme = 'indigo' | 'rose' | 'emerald' | 'amber' | 'sky' | 'violet';
+
 export interface AppSettings {
   discordWebhookUrl: string;
   darkMode: boolean;
   username: string;
+  colorTheme?: ColorTheme;
 }

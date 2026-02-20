@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Edit3, Trash2, Moon, Sun, Download, Send, Tag, ChevronRight, User, FileText, LogOut } from 'lucide-react';
+import { Plus, Edit3, Trash2, Moon, Sun, Download, Send, Tag, ChevronRight, User, FileText, LogOut, Palette, Check } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../contexts/AuthContext';
+import type { ColorTheme } from '../../types';
 import { exportJSON, exportCSV, exportMarkdown } from '../../utils/export';
 import { sendDiscordReport } from '../../utils/discord';
 import { formatDate } from '../../utils/date';
@@ -18,7 +19,7 @@ export default function SettingsTab() {
   const settings = useRoutineStore((s) => s.settings);
   const updateSettings = useRoutineStore((s) => s.updateSettings);
   const deleteRoutine = useRoutineStore((s) => s.deleteRoutine);
-  const { darkMode, toggleDarkMode } = useTheme();
+  const { darkMode, toggleDarkMode, colorTheme, setColorTheme } = useTheme();
   const { user, logout } = useAuth();
 
   const [showForm, setShowForm] = useState(false);
@@ -141,6 +142,32 @@ export default function SettingsTab() {
           >
             <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform ${darkMode ? 'translate-x-6' : 'translate-x-1'}`} />
           </button>
+        </div>
+      </section>
+      <section className="mb-6">
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2"><Palette size={18} />색상 테마</h2>
+        <div className="grid grid-cols-6 gap-2">
+          {([
+            { key: 'indigo' as ColorTheme, color: 'bg-indigo-500', label: '인디고' },
+            { key: 'rose' as ColorTheme, color: 'bg-rose-500', label: '로즈' },
+            { key: 'emerald' as ColorTheme, color: 'bg-emerald-500', label: '에메랄드' },
+            { key: 'amber' as ColorTheme, color: 'bg-amber-500', label: '앰버' },
+            { key: 'sky' as ColorTheme, color: 'bg-sky-500', label: '스카이' },
+            { key: 'violet' as ColorTheme, color: 'bg-violet-500', label: '바이올렛' },
+          ]).map(({ key, color, label }) => (
+            <button
+              key={key}
+              onClick={() => setColorTheme(key)}
+              aria-label={`${label} 테마 선택`}
+              aria-pressed={colorTheme === key}
+              className="flex flex-col items-center gap-1.5"
+            >
+              <div className={`w-10 h-10 rounded-full ${color} flex items-center justify-center transition-all ${colorTheme === key ? 'ring-2 ring-offset-2 ring-offset-surface ring-text-primary scale-110' : 'opacity-60 hover:opacity-80'}`}>
+                {colorTheme === key && <Check size={18} className="text-white" strokeWidth={3} />}
+              </div>
+              <span className={`text-[10px] ${colorTheme === key ? 'text-text-primary font-semibold' : 'text-text-tertiary'}`}>{label}</span>
+            </button>
+          ))}
         </div>
       </section>
       <section className="mb-6">
