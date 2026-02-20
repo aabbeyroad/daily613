@@ -8,6 +8,7 @@ import { sendDiscordReport } from '../../utils/discord';
 import { formatDate } from '../../utils/date';
 import RoutineForm from './RoutineForm';
 import KeywordManager from './KeywordManager';
+import ConfirmDialog from '../common/ConfirmDialog';
 import type { Routine } from '../../types';
 
 export default function SettingsTab() {
@@ -27,20 +28,21 @@ export default function SettingsTab() {
   const [username, setUsername] = useState(settings.username || user?.displayName || '');
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<'success' | 'success-noimage' | 'error' | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<{ type: 'routine'; routine: Routine } | { type: 'logout' } | null>(null);
 
   const handleEdit = (routine: Routine) => { setEditingRoutine(routine); setShowForm(true); };
-  const handleDelete = (routine: Routine) => { if (confirm(`"${routine.name}" 루틴을 삭제하시겠습니까?`)) deleteRoutine(routine.id); };
-  
-  const handleExportJSON = () => { 
-    exportJSON({ routines, records, reflections }); 
+  const handleDelete = (routine: Routine) => { setConfirmTarget({ type: 'routine', routine }); };
+
+  const handleExportJSON = () => {
+    exportJSON({ routines, records, reflections });
   };
-  const handleExportCSV = () => { 
-    exportCSV(routines, records, reflections); 
+  const handleExportCSV = () => {
+    exportCSV(routines, records, reflections);
   };
-  const handleExportMarkdown = () => { 
-    exportMarkdown({ routines, records, reflections }); 
+  const handleExportMarkdown = () => {
+    exportMarkdown({ routines, records, reflections });
   };
-  
+
   const handleSaveWebhook = () => { updateSettings({ discordWebhookUrl: webhookUrl.trim(), username: username.trim() }); };
 
   const handleSendReport = async () => {
@@ -66,11 +68,7 @@ export default function SettingsTab() {
     setTimeout(() => setSendResult(null), 3000);
   };
 
-  const handleLogout = async () => {
-    if (confirm('로그아웃 하시겠습니까?')) {
-      await logout();
-    }
-  };
+  const handleLogout = () => { setConfirmTarget({ type: 'logout' }); };
 
   const activeRoutines = routines.filter((r) => !r.archived).sort((a, b) => a.order - b.order);
 
@@ -91,7 +89,8 @@ export default function SettingsTab() {
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-colors"
+              aria-label="로그아웃"
+              className="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-colors"
             >
               <LogOut size={20} />
             </button>
@@ -102,7 +101,7 @@ export default function SettingsTab() {
       <section className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold">루틴 관리</h2>
-          <button onClick={() => { setEditingRoutine(undefined); setShowForm(true); }} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary-600 text-white text-sm font-medium active:scale-95 transition-all"><Plus size={16} />추가</button>
+          <button onClick={() => { setEditingRoutine(undefined); setShowForm(true); }} aria-label="루틴 추가" className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary-600 text-white text-sm font-medium active:scale-95 transition-all"><Plus size={16} />추가</button>
         </div>
         {activeRoutines.length === 0 ? (
           <div className="text-center py-8 text-text-tertiary">루틴을 추가해보세요</div>
@@ -115,8 +114,8 @@ export default function SettingsTab() {
                   <div className="text-xs text-text-tertiary mt-0.5"><span className="text-done">Done: {routine.doneGoal}</span>{' / '}<span className="text-more">More: {routine.moreGoal}</span>{' / '}<span className="text-max">Max: {routine.maxGoal}</span></div>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => handleEdit(routine)} className="p-2 rounded-lg hover:bg-surface-tertiary transition-colors"><Edit3 size={16} className="text-text-secondary" /></button>
-                  <button onClick={() => handleDelete(routine)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 size={16} className="text-red-500" /></button>
+                  <button onClick={() => handleEdit(routine)} aria-label={`${routine.name} 수정`} className="p-2.5 rounded-lg hover:bg-surface-tertiary transition-colors"><Edit3 size={16} className="text-text-secondary" /></button>
+                  <button onClick={() => handleDelete(routine)} aria-label={`${routine.name} 삭제`} className="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 size={16} className="text-red-500" /></button>
                 </div>
               </div>
             ))}
@@ -124,7 +123,7 @@ export default function SettingsTab() {
         )}
       </section>
       <section className="mb-6">
-        <button onClick={() => setShowKeywords(!showKeywords)} className="flex items-center justify-between w-full mb-3">
+        <button onClick={() => setShowKeywords(!showKeywords)} aria-label="키워드 관리 열기/닫기" aria-expanded={showKeywords} className="flex items-center justify-between w-full mb-3">
           <h2 className="text-lg font-semibold flex items-center gap-2"><Tag size={18} />키워드 관리</h2>
           <ChevronRight size={18} className={`text-text-tertiary transition-transform ${showKeywords ? 'rotate-90' : ''}`} />
         </button>
@@ -133,7 +132,13 @@ export default function SettingsTab() {
       <section className="mb-6">
         <div className="flex items-center justify-between p-4 rounded-xl bg-surface-secondary border border-border">
           <div className="flex items-center gap-3">{darkMode ? <Moon size={20} /> : <Sun size={20} />}<span className="font-medium">다크모드</span></div>
-          <button onClick={toggleDarkMode} className={`w-12 h-7 rounded-full transition-colors relative ${darkMode ? 'bg-primary-600' : 'bg-surface-tertiary'}`}>
+          <button
+            onClick={toggleDarkMode}
+            role="switch"
+            aria-checked={darkMode}
+            aria-label="다크모드 전환"
+            className={`w-12 h-7 rounded-full transition-colors relative ${darkMode ? 'bg-primary-600' : 'bg-surface-tertiary'}`}
+          >
             <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform ${darkMode ? 'translate-x-6' : 'translate-x-1'}`} />
           </button>
         </div>
@@ -151,32 +156,52 @@ export default function SettingsTab() {
           </div>
           <button onClick={handleSaveWebhook} className="w-full py-2 rounded-lg bg-primary-600 text-white text-sm font-medium active:scale-95 transition-all">저장</button>
           {settings.discordWebhookUrl && (
-            <button onClick={handleSendReport} disabled={sending} className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#5865F2] text-white font-medium text-sm disabled:opacity-50 active:scale-[0.98] transition-all"><Send size={16} />{sending ? '전송 중...' : '오늘의 리포트 전송'}</button>
+            <button onClick={handleSendReport} disabled={sending} aria-label="Discord 리포트 전송" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#5865F2] text-white font-medium text-sm disabled:opacity-50 active:scale-[0.98] transition-all"><Send size={16} />{sending ? '전송 중...' : '오늘의 리포트 전송'}</button>
           )}
-          {sendResult === 'success' && <p className="text-done text-sm text-center">📸 이미지 포함 전송 완료!</p>}
-          {sendResult === 'success-noimage' && <p className="text-yellow-500 text-sm text-center">⚠️ 텍스트만 전송됨 (이미지 생성 실패)</p>}
-          {sendResult === 'error' && <p className="text-red-500 text-sm text-center">전송 실패. URL을 확인해주세요.</p>}
+          {sendResult === 'success' && <p className="text-done text-sm text-center" role="status">이미지 포함 전송 완료!</p>}
+          {sendResult === 'success-noimage' && <p className="text-yellow-500 text-sm text-center" role="status">텍스트만 전송됨 (이미지 생성 실패)</p>}
+          {sendResult === 'error' && <p className="text-red-500 text-sm text-center" role="alert">전송 실패. URL을 확인해주세요.</p>}
         </div>
       </section>
       <section className="mb-6">
         <h2 className="text-lg font-semibold mb-3">데이터 내보내기</h2>
         <p className="text-xs text-text-tertiary mb-3">루틴 기록과 회고를 날짜별로 정리하여 내보냅니다</p>
         <div className="grid grid-cols-3 gap-2">
-          <button onClick={handleExportJSON} className="flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary font-medium text-sm active:scale-[0.98] transition-all">
+          <button onClick={handleExportJSON} aria-label="JSON으로 내보내기" className="flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary font-medium text-sm active:scale-[0.98] transition-all">
             <Download size={18} />
             <span>JSON</span>
           </button>
-          <button onClick={handleExportCSV} className="flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary font-medium text-sm active:scale-[0.98] transition-all">
+          <button onClick={handleExportCSV} aria-label="CSV로 내보내기" className="flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary font-medium text-sm active:scale-[0.98] transition-all">
             <Download size={18} />
             <span>CSV</span>
           </button>
-          <button onClick={handleExportMarkdown} className="flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary font-medium text-sm active:scale-[0.98] transition-all">
+          <button onClick={handleExportMarkdown} aria-label="Markdown으로 내보내기" className="flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-border bg-surface-secondary text-text-primary font-medium text-sm active:scale-[0.98] transition-all">
             <FileText size={18} />
             <span>MD</span>
           </button>
         </div>
       </section>
       {showForm && <RoutineForm routine={editingRoutine} onClose={() => { setShowForm(false); setEditingRoutine(undefined); }} />}
+      {confirmTarget && confirmTarget.type === 'routine' && (
+        <ConfirmDialog
+          title="루틴 삭제"
+          message={`"${confirmTarget.routine.name}" 루틴을 삭제하시겠습니까?`}
+          confirmLabel="삭제"
+          variant="danger"
+          onConfirm={() => { deleteRoutine(confirmTarget.routine.id); setConfirmTarget(null); }}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
+      {confirmTarget && confirmTarget.type === 'logout' && (
+        <ConfirmDialog
+          title="로그아웃"
+          message="로그아웃 하시겠습니까?"
+          confirmLabel="로그아웃"
+          variant="default"
+          onConfirm={async () => { setConfirmTarget(null); await logout(); }}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
     </div>
   );
 }

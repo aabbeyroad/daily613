@@ -14,13 +14,15 @@ export default function TabBar() {
   const setActiveTab = useRoutineStore((s) => s.setActiveTab);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border safe-bottom" aria-label="메인 탭 네비게이션">
       <div className="max-w-lg mx-auto flex">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
-            className={`flex-1 flex flex-col items-center py-2 pt-3 transition-colors ${
+            aria-label={`${label} 탭`}
+            aria-current={activeTab === id ? 'page' : undefined}
+            className={`flex-1 flex flex-col items-center py-2 pt-3 min-h-[48px] transition-colors ${
               activeTab === id ? 'text-primary-600' : 'text-text-tertiary'
             }`}
           >

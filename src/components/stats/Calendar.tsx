@@ -44,9 +44,9 @@ export default function Calendar() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1"><ChevronLeft size={20} /></button>
+        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} aria-label="이전 달" className="p-2.5"><ChevronLeft size={20} /></button>
         <span className="font-medium">{format(currentMonth, 'yyyy년 M월', { locale: ko })}</span>
-        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1"><ChevronRight size={20} /></button>
+        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} aria-label="다음 달" className="p-2.5"><ChevronRight size={20} /></button>
       </div>
       <div className="grid grid-cols-7 gap-1 mb-2">
         {['월', '화', '수', '목', '금', '토', '일'].map((d) => (
@@ -62,6 +62,7 @@ export default function Calendar() {
             <button
               key={dateStr}
               onClick={() => setSelectedDate(dateStr)}
+              aria-label={`${format(day, 'M월 d일', { locale: ko })} 달성률 ${rate}%`}
               className={`aspect-square rounded-lg flex items-center justify-center text-xs font-medium transition-all ${getRateColor(rate)} ${isToday(day) ? 'ring-2 ring-primary-500' : ''} ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}`}
             >
               {format(day, 'd')}
@@ -70,15 +71,15 @@ export default function Calendar() {
         })}
       </div>
       {selectedDate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedDate(null)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-labelledby="cal-detail-title" onClick={() => setSelectedDate(null)}>
           <div className="bg-surface rounded-2xl p-5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">{selectedDate}</h3>
-              <button onClick={() => setSelectedDate(null)} className="p-1"><X size={20} /></button>
+              <h3 id="cal-detail-title" className="font-bold text-lg">{selectedDate}</h3>
+              <button onClick={() => setSelectedDate(null)} aria-label="닫기" className="p-2.5"><X size={20} /></button>
             </div>
             {selectedKeyword && (
               <div className="mb-3 text-xs text-primary-600 dark:text-primary-400">
-                📁 {selectedKeyword} 필터 적용 중
+                {selectedKeyword} 필터 적용 중
               </div>
             )}
             {selectedRecord && (

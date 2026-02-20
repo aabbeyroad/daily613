@@ -57,11 +57,11 @@ export default function ReflectionForm({ date, type, existing, onClose }: Props)
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-labelledby="reflection-form-title" onClick={onClose}>
       <div className="bg-surface rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">{existing ? '회고 수정' : '회고 작성'}</h2>
-          <button onClick={onClose} className="p-1"><X size={20} /></button>
+          <h2 id="reflection-form-title" className="text-lg font-bold">{existing ? '회고 수정' : '회고 작성'}</h2>
+          <button onClick={onClose} aria-label="닫기" className="p-2.5"><X size={20} /></button>
         </div>
 
         {/* 주간 회고 시: 이번 주 일간 회고 KPT 요약 */}
