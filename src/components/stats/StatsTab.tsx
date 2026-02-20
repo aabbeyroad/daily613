@@ -31,7 +31,7 @@ export default function StatsTab() {
   const streak = useMemo(() => {
     const recordMap: Record<string, Record<string, string>> = {};
     records.forEach((r) => { recordMap[r.date] = r.checks; });
-    
+
     let currentStreak = 0;
     const checkDate = (date: Date): boolean => {
       const dateStr = formatDate(date);
@@ -39,7 +39,7 @@ export default function StatsTab() {
       if (!record) return false;
       return filteredRoutines.some((r) => record[r.id] && record[r.id] !== 'none');
     };
-    
+
     let d = new Date(today);
     d.setDate(d.getDate() - 1);
     while (checkDate(d)) {
@@ -47,7 +47,7 @@ export default function StatsTab() {
       d.setDate(d.getDate() - 1);
     }
     if (checkDate(today)) currentStreak++;
-    
+
     return currentStreak;
   }, [records, filteredRoutines, today]);
 
@@ -76,77 +76,80 @@ export default function StatsTab() {
   }, [filteredRoutines, records]);
 
   const statCards = [
-    { icon: Flame, label: '연속 달성', value: `${streak}일`, color: 'text-orange-500' },
-    { icon: Target, label: '오늘 달성률', value: `${todayRate}%`, color: 'text-done' },
-    { icon: TrendingUp, label: '이번 주', value: `${weeklyRate}%`, color: 'text-more' },
-    { icon: Trophy, label: '이번 달', value: `${monthlyRate}%`, color: 'text-max' },
+    { icon: Flame, label: '연속 달성', value: `${streak}일`, color: 'text-orange-500', bgColor: 'bg-orange-50 dark:bg-orange-900/20' },
+    { icon: Target, label: '오늘', value: `${todayRate}%`, color: 'text-done', bgColor: 'bg-green-50 dark:bg-green-900/20' },
+    { icon: TrendingUp, label: '이번 주', value: `${weeklyRate}%`, color: 'text-more', bgColor: 'bg-blue-50 dark:bg-blue-900/20' },
+    { icon: Trophy, label: '이번 달', value: `${monthlyRate}%`, color: 'text-max', bgColor: 'bg-purple-50 dark:bg-purple-900/20' },
   ];
 
   return (
-    <div className="px-4 pt-6 pb-4">
-      <h1 className="text-2xl font-bold text-text-primary mb-4">통계</h1>
-      
+    <div className="px-4 pt-5 pb-4">
       {/* 키워드 필터 */}
-      <div className="mb-6">
+      <div className="mb-5">
         <KeywordFilter />
       </div>
 
       {selectedKeyword && (
-        <div className="mb-4 px-3 py-2 rounded-lg bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-sm">
-          📊 '{selectedKeyword}' 키워드 통계
+        <div className="mb-4 px-3 py-2 rounded-xl bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-[13px] font-medium">
+          '{selectedKeyword}' 키워드 통계
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        {statCards.map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="p-4 rounded-xl bg-surface-secondary border border-border">
-            <Icon size={20} className={color} />
-            <div className="text-2xl font-bold mt-2 text-text-primary">{value}</div>
-            <div className="text-xs text-text-tertiary mt-0.5">{label}</div>
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-2 gap-2.5 mb-5">
+        {statCards.map(({ icon: Icon, label, value, color, bgColor }) => (
+          <div key={label} className="p-3.5 rounded-2xl bg-surface-secondary border border-border">
+            <div className={`w-8 h-8 rounded-xl ${bgColor} flex items-center justify-center mb-2`}>
+              <Icon size={17} className={color} />
+            </div>
+            <div className="text-[22px] font-bold text-text-primary leading-tight">{value}</div>
+            <div className="text-[11px] text-text-tertiary mt-0.5 font-medium">{label}</div>
           </div>
         ))}
       </div>
 
       {/* 이번 주 점수 */}
-      <div className="p-4 rounded-xl bg-surface-secondary border border-border mb-6">
+      <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs text-text-tertiary">이번 주 점수</div>
+            <div className="text-[11px] text-text-tertiary font-medium uppercase tracking-wide">이번 주 점수</div>
             <div className="text-3xl font-bold text-text-primary mt-1">{weeklyScore}<span className="text-sm text-text-tertiary font-normal ml-1">pts</span></div>
           </div>
-          <div className="text-right text-xs text-text-tertiary">
-            <div>Done = 1pt</div><div>More = 2pt</div><div>Max = 3pt</div>
+          <div className="text-right space-y-0.5">
+            <div className="text-[10px] text-done font-medium">Done = 1pt</div>
+            <div className="text-[10px] text-more font-medium">More = 2pt</div>
+            <div className="text-[10px] text-max font-medium">Max = 3pt</div>
           </div>
         </div>
       </div>
 
       {/* 이번 주 루틴별 현황 */}
-      <div className="p-4 rounded-xl bg-surface-secondary border border-border mb-6">
-        <h3 className="font-semibold mb-4">이번 주 루틴 현황</h3>
+      <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
+        <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">이번 주 루틴 현황</h3>
         <WeeklyRoutineGrid />
       </div>
 
       {/* 달성 단계 비율 */}
       {levelDistribution.length > 0 && (
-        <div className="p-4 rounded-xl bg-surface-secondary border border-border mb-6">
-          <h3 className="font-semibold mb-4">달성 단계 비율</h3>
+        <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
+          <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">달성 단계 비율</h3>
           <div className="flex items-center">
-            <div className="w-32 h-32">
+            <div className="w-28 h-28">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={levelDistribution} cx="50%" cy="50%" innerRadius={30} outerRadius={55} dataKey="value" strokeWidth={2} stroke="var(--color-surface-secondary)">
+                  <Pie data={levelDistribution} cx="50%" cy="50%" innerRadius={28} outerRadius={50} dataKey="value" strokeWidth={2} stroke="var(--color-surface-secondary)">
                     {levelDistribution.map((entry, index) => (<Cell key={index} fill={entry.color} />))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value}회`, '']} contentStyle={{ borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontSize: '12px' }} />
+                  <Tooltip formatter={(value) => [`${value}회`, '']} contentStyle={{ borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontSize: '12px' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex-1 ml-4 space-y-2">
+            <div className="flex-1 ml-4 space-y-2.5">
               {levelDistribution.map((item) => (
                 <div key={item.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ background: item.color }} />
-                  <span className="text-sm text-text-secondary flex-1">{item.name}</span>
-                  <span className="text-sm font-medium text-text-primary">{item.value}회</span>
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                  <span className="text-[13px] text-text-secondary flex-1">{item.name}</span>
+                  <span className="text-[13px] font-semibold text-text-primary">{item.value}회</span>
                 </div>
               ))}
             </div>
@@ -155,8 +158,8 @@ export default function StatsTab() {
       )}
 
       {/* 월간 캘린더 */}
-      <div className="p-4 rounded-xl bg-surface-secondary border border-border mb-6">
-        <h3 className="font-semibold mb-4">월간 캘린더</h3>
+      <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
+        <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">월간 캘린더</h3>
         <Calendar />
       </div>
     </div>

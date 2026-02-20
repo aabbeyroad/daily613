@@ -4,6 +4,7 @@ export type TabType = 'today' | 'stats' | 'reflection' | 'settings';
 export interface Routine {
   id: string;
   name: string;
+  icon?: string;
   keywords: string[];
   doneGoal: string;
   moreGoal: string;
