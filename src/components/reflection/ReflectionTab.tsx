@@ -1,14 +1,22 @@
 import { useState, useMemo } from 'react';
-import { Plus, Edit3, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit3, Trash2, ChevronLeft, ChevronRight, ThumbsUp, Minus, ThumbsDown } from 'lucide-react';
 import { addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, formatDisplayDate, getWeekKey, getWeekDays } from '../../utils/date';
+import { IconDisplay } from '../settings/RoutineForm';
 import ReflectionForm from './ReflectionForm';
 import ConfirmDialog from '../common/ConfirmDialog';
-import type { Reflection } from '../../types';
+import type { Reflection, RoutineEvaluation } from '../../types';
+
+const EVAL_DISPLAY: Record<RoutineEvaluation, { label: string; icon: typeof ThumbsUp; color: string; bg: string }> = {
+  good: { label: 'Good', icon: ThumbsUp, color: 'text-done', bg: 'bg-green-50 dark:bg-green-900/10' },
+  soso: { label: 'Soso', icon: Minus, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/10' },
+  bad: { label: 'Bad', icon: ThumbsDown, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/10' },
+};
 
 export default function ReflectionTab() {
   const reflections = useRoutineStore((s) => s.reflections);
+  const routines = useRoutineStore((s) => s.routines);
   const deleteReflection = useRoutineStore((s) => s.deleteReflection);
   const [viewType, setViewType] = useState<'daily' | 'weekly'>('daily');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -30,6 +38,10 @@ export default function ReflectionTab() {
   const handleEdit = (reflection: Reflection) => { setEditingReflection(reflection); setShowForm(true); };
   const handleDelete = (reflection: Reflection) => { setConfirmTarget(reflection); };
   const handleNew = () => { setEditingReflection(undefined); setShowForm(true); };
+
+  // 루틴 이름 조회 헬퍼
+  const getRoutineName = (routineId: string) => routines.find((r) => r.id === routineId)?.name || '삭제된 루틴';
+  const getRoutineIcon = (routineId: string) => routines.find((r) => r.id === routineId)?.icon;
 
   return (
     <div className="px-4 pt-5 pb-4">
@@ -77,6 +89,37 @@ export default function ReflectionTab() {
                 </div>
               )}
             </div>
+
+            {/* 루틴별 평가 표시 (주간 회고에서만) */}
+            {currentReflection.routineEvals && currentReflection.routineEvals.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-border/50">
+                <h4 className="text-[11px] font-bold text-text-secondary mb-2.5 uppercase tracking-wide">루틴별 평가</h4>
+                <div className="space-y-2">
+                  {currentReflection.routineEvals.map((evalItem) => {
+                    const display = EVAL_DISPLAY[evalItem.evaluation];
+                    const Icon = display.icon;
+                    const routineIcon = getRoutineIcon(evalItem.routineId);
+                    return (
+                      <div key={evalItem.routineId} className={`p-2.5 rounded-lg ${display.bg} border border-border/30`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            {routineIcon && <IconDisplay icon={routineIcon} size={14} />}
+                            <span className="text-[12px] font-medium text-text-primary">{getRoutineName(evalItem.routineId)}</span>
+                          </div>
+                          <div className={`flex items-center gap-1 ${display.color}`}>
+                            <Icon size={12} />
+                            <span className="text-[11px] font-bold">{display.label}</span>
+                          </div>
+                        </div>
+                        {evalItem.improvement && (
+                          <p className="mt-1.5 text-[11px] text-text-secondary leading-relaxed">{evalItem.improvement}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center py-8">
@@ -107,6 +150,21 @@ export default function ReflectionTab() {
                   {ref.problem && <p className="text-[12px] text-text-secondary"><span className="text-red-500 font-bold">P</span> {ref.problem.slice(0, 80)}{ref.problem.length > 80 ? '...' : ''}</p>}
                   {ref.try && <p className="text-[12px] text-text-secondary"><span className="text-more font-bold">T</span> {ref.try.slice(0, 80)}{ref.try.length > 80 ? '...' : ''}</p>}
                 </div>
+                {/* 루틴 평가 요약 */}
+                {ref.routineEvals && ref.routineEvals.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {ref.routineEvals.map((evalItem) => {
+                      const display = EVAL_DISPLAY[evalItem.evaluation];
+                      const Icon = display.icon;
+                      return (
+                        <span key={evalItem.routineId} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium ${display.color} ${display.bg}`}>
+                          <Icon size={9} />
+                          {getRoutineName(evalItem.routineId)}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
