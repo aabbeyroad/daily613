@@ -120,7 +120,7 @@ export default function WeeklyRoutineGrid() {
                   return (
                     <div
                       key={day.toISOString()}
-                      className={`flex-1 h-7 rounded-md ${levelColors[level as keyof typeof levelColors]} ${
+                      className={`flex-1 h-[22px] rounded-md ${levelColors[level as keyof typeof levelColors]} ${
                         isToday(day) ? 'ring-2 ring-primary-500 ring-offset-1' : ''
                       } transition-all`}
                       title={`${routine.name} - ${format(day, 'M/d')} - ${level === 'none' ? '미완료' : level.toUpperCase()}`}
