@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react';
+import { IconDisplay } from '../settings/RoutineForm';
 import type { Routine, CheckLevel } from '../../types';
 
 interface Props {
@@ -30,9 +31,7 @@ export default function RoutineCheckItem({ routine, currentLevel, onToggle }: Pr
   return (
     <div className={`p-3.5 rounded-2xl border transition-all ${currentLevel !== 'none' ? 'bg-surface-secondary border-border shadow-sm' : 'bg-surface border-border'}`}>
       <div className="flex items-center gap-2.5 mb-2.5">
-        {routine.icon && (
-          <span className="text-lg leading-none">{routine.icon}</span>
-        )}
+        {routine.icon && <IconDisplay icon={routine.icon} size={20} />}
         <h3 className="font-semibold text-[15px] text-text-primary flex-1">{routine.name}</h3>
         {routine.keywords.length > 0 && (
           <div className="flex gap-1">

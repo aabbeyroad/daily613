@@ -7,7 +7,7 @@ import type { ColorTheme, Routine } from '../../types';
 import { exportJSON, exportCSV, exportMarkdown } from '../../utils/export';
 import { sendDiscordReport } from '../../utils/discord';
 import { formatDate } from '../../utils/date';
-import RoutineForm from './RoutineForm';
+import RoutineForm, { IconDisplay } from './RoutineForm';
 import KeywordManager from './KeywordManager';
 import ConfirmDialog from '../common/ConfirmDialog';
 
@@ -95,7 +95,7 @@ export default function SettingsTab() {
             {activeRoutines.map((routine) => (
               <div key={routine.id} className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                  {routine.icon && <span className="text-lg">{routine.icon}</span>}
+                  {routine.icon && <IconDisplay icon={routine.icon} size={20} />}
                   <div className="min-w-0">
                     <div className="font-medium text-[15px] text-text-primary truncate">{routine.name}</div>
                     <div className="text-[11px] text-text-tertiary mt-0.5"><span className="text-done">D:{routine.doneGoal}</span>{' · '}<span className="text-more">M:{routine.moreGoal}</span>{' · '}<span className="text-max">X:{routine.maxGoal}</span></div>
