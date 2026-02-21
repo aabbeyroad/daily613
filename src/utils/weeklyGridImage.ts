@@ -135,12 +135,19 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
   activeRoutines.forEach((routine, ri) => {
     const y = rowStartY + ri * (rowHeight + cellGap);
 
-    // Routine name
+    // Routine name (with emoji icon if available)
+    ctx.textBaseline = 'middle';
+    let nameX = padding;
+    if (routine.icon && !routine.icon.startsWith('lucide:')) {
+      ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(routine.icon, nameX, y + rowHeight / 2);
+      nameX += 15;
+    }
     ctx.fillStyle = TEXT_COLOR;
     ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.textBaseline = 'middle';
-    const name = truncateText(ctx, routine.name, nameColWidth);
-    ctx.fillText(name, padding, y + rowHeight / 2);
+    const nameMaxWidth = nameColWidth - (nameX - padding);
+    const name = truncateText(ctx, routine.name, nameMaxWidth);
+    ctx.fillText(name, nameX, y + rowHeight / 2);
 
     // Day cells
     weekDays.forEach((day, di) => {

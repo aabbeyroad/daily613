@@ -70,7 +70,8 @@ export const sendDiscordReport = async (
       }
       
       const levelText = level === 'none' ? '-' : `**${level.toUpperCase()}**${goalText}`;
-      return `${emoji} ${r.name}: ${levelText}`;
+      const iconPrefix = r.icon && !r.icon.startsWith('lucide:') ? `${r.icon} ` : '';
+      return `${emoji} ${iconPrefix}${r.name}: ${levelText}`;
     })
     .join('\n');
 
