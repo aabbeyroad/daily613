@@ -200,14 +200,9 @@ export default function SettingsTab() {
                     <button onClick={() => setReportDate((d) => subDays(d, 1))} aria-label="이전 날짜" className="p-2 rounded-lg hover:bg-surface-secondary transition-colors">
                       <ChevronLeft size={16} className="text-text-tertiary" />
                     </button>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[13px] font-medium text-text-primary">{formatDisplayDate(reportDate)}</span>
-                      {!isReportToday && (
-                        <button onClick={() => setReportDate(new Date())} className="px-1.5 py-0.5 rounded-md bg-primary-50 dark:bg-primary-900/20 text-primary-600 text-[10px] font-semibold">
-                          오늘
-                        </button>
-                      )}
-                    </div>
+                    <button onClick={() => setReportDate(new Date())} className={`text-[13px] font-medium transition-colors ${isReportToday ? 'text-text-primary' : 'text-primary-600'}`}>
+                      {formatDisplayDate(reportDate)}
+                    </button>
                     <button onClick={() => setReportDate((d) => addDays(d, 1))} aria-label="다음 날짜" className="p-2 rounded-lg hover:bg-surface-secondary transition-colors">
                       <ChevronRight size={16} className="text-text-tertiary" />
                     </button>

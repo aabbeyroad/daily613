@@ -44,16 +44,9 @@ export default function TodayTab() {
         <button onClick={() => setCurrentDate((d) => subDays(d, 1))} aria-label="이전 날짜" className="p-2 rounded-xl hover:bg-surface-secondary transition-colors">
           <ChevronLeft size={20} className="text-text-secondary" />
         </button>
-        <div className="flex items-center gap-2">
-          <button onClick={goToToday} className={`text-[15px] font-medium transition-colors ${isToday ? 'text-text-secondary' : 'text-primary-600'}`}>
-            {formatDisplayDate(currentDate)}
-          </button>
-          {!isToday && (
-            <button onClick={goToToday} className="px-2 py-0.5 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 text-[11px] font-semibold">
-              오늘
-            </button>
-          )}
-        </div>
+        <button onClick={goToToday} className={`text-[15px] font-medium transition-colors ${isToday ? 'text-text-secondary' : 'text-primary-600'}`}>
+          {formatDisplayDate(currentDate)}
+        </button>
         <div className="flex items-center gap-1">
           {rate === 100 && activeRoutines.length > 0 && (
             <div className="flex items-center gap-1 text-done mr-1">
