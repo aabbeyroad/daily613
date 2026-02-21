@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Flame, Target, TrendingUp, Trophy } from 'lucide-react';
+import { Flame, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, getWeekDays, startOfMonth, endOfMonth } from '../../utils/date';
 import KeywordFilter from '../common/KeywordFilter';
@@ -95,25 +95,32 @@ export default function StatsTab() {
         </div>
       )}
 
-      {/* 통계 카드 */}
+      {/* 통계 카드 - 아이콘 우측에 수치 배치 */}
       <div className="grid grid-cols-2 gap-2.5 mb-5">
         {statCards.map(({ icon: Icon, label, value, color, bgColor }) => (
-          <div key={label} className="p-3.5 rounded-2xl bg-surface-secondary border border-border">
-            <div className={`w-8 h-8 rounded-xl ${bgColor} flex items-center justify-center mb-2`}>
-              <Icon size={17} className={color} />
+          <div key={label} className="p-3 rounded-2xl bg-surface-secondary border border-border flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl ${bgColor} flex items-center justify-center flex-shrink-0`}>
+              <Icon size={19} className={color} />
             </div>
-            <div className="text-[22px] font-bold text-text-primary leading-tight">{value}</div>
-            <div className="text-[11px] text-text-tertiary mt-0.5 font-medium">{label}</div>
+            <div className="min-w-0">
+              <div className="text-[20px] font-bold text-text-primary leading-tight">{value}</div>
+              <div className="text-[11px] text-text-tertiary font-medium">{label}</div>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* 이번 주 점수 */}
+      {/* 이번 주 점수 - 좌측 아이콘 추가 */}
       <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
         <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[11px] text-text-tertiary font-medium uppercase tracking-wide">이번 주 점수</div>
-            <div className="text-3xl font-bold text-text-primary mt-1">{weeklyScore}<span className="text-sm text-text-tertiary font-normal ml-1">pts</span></div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center flex-shrink-0">
+              <Zap size={19} className="text-yellow-500" />
+            </div>
+            <div>
+              <div className="text-[11px] text-text-tertiary font-medium uppercase tracking-wide">이번 주 점수</div>
+              <div className="text-2xl font-bold text-text-primary leading-tight mt-0.5">{weeklyScore}<span className="text-sm text-text-tertiary font-normal ml-1">pts</span></div>
+            </div>
           </div>
           <div className="text-right space-y-0.5">
             <div className="text-[10px] text-done font-medium">Done = 1pt</div>
