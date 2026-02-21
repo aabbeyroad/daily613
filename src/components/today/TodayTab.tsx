@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
-import { Trophy } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
+import { addDays, subDays } from 'date-fns';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, formatDisplayDate } from '../../utils/date';
 import RoutineCheckItem from './RoutineCheckItem';
@@ -13,9 +14,11 @@ export default function TodayTab() {
   const selectedKeyword = useRoutineStore((s) => s.selectedKeyword);
   const getFilteredRoutines = useRoutineStore((s) => s.getFilteredRoutines);
 
-  const today = new Date();
-  const dateStr = formatDate(today);
-  const todayRecord = records.find((r) => r.date === dateStr);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const todayStr = formatDate(new Date());
+  const dateStr = formatDate(currentDate);
+  const isToday = dateStr === todayStr;
+  const dayRecord = records.find((r) => r.date === dateStr);
 
   const activeRoutines = useMemo(() => {
     return getFilteredRoutines().sort((a, b) => a.order - b.order);
@@ -24,25 +27,44 @@ export default function TodayTab() {
   const { completedCount, rate } = useMemo(() => {
     const total = activeRoutines.length;
     if (total === 0) return { completedCount: 0, rate: 0 };
-    const completed = activeRoutines.filter((r) => todayRecord?.checks[r.id] && todayRecord.checks[r.id] !== 'none').length;
+    const completed = activeRoutines.filter((r) => dayRecord?.checks[r.id] && dayRecord.checks[r.id] !== 'none').length;
     return { completedCount: completed, rate: Math.round((completed / total) * 100) };
-  }, [activeRoutines, todayRecord]);
+  }, [activeRoutines, dayRecord]);
 
   const handleToggle = (routineId: string, level: CheckLevel) => {
     setCheck(dateStr, routineId, level);
   };
 
+  const goToToday = () => setCurrentDate(new Date());
+
   return (
     <div className="px-4 pt-5">
-      {/* 날짜 헤더 - 컴팩트 */}
+      {/* 날짜 네비게이션 */}
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-[15px] text-text-secondary font-medium">{formatDisplayDate(today)}</p>
-        {rate === 100 && activeRoutines.length > 0 && (
-          <div className="flex items-center gap-1 text-done">
-            <Trophy size={16} />
-            <span className="text-xs font-bold">완벽!</span>
-          </div>
-        )}
+        <button onClick={() => setCurrentDate((d) => subDays(d, 1))} aria-label="이전 날짜" className="p-2 rounded-xl hover:bg-surface-secondary transition-colors">
+          <ChevronLeft size={20} className="text-text-secondary" />
+        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={goToToday} className={`text-[15px] font-medium transition-colors ${isToday ? 'text-text-secondary' : 'text-primary-600'}`}>
+            {formatDisplayDate(currentDate)}
+          </button>
+          {!isToday && (
+            <button onClick={goToToday} className="px-2 py-0.5 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 text-[11px] font-semibold">
+              오늘
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {rate === 100 && activeRoutines.length > 0 && (
+            <div className="flex items-center gap-1 text-done mr-1">
+              <Trophy size={16} />
+              <span className="text-xs font-bold">완벽!</span>
+            </div>
+          )}
+          <button onClick={() => setCurrentDate((d) => addDays(d, 1))} aria-label="다음 날짜" className="p-2 rounded-xl hover:bg-surface-secondary transition-colors">
+            <ChevronRight size={20} className="text-text-secondary" />
+          </button>
+        </div>
       </div>
 
       {/* 진행률 카드 */}
@@ -86,7 +108,7 @@ export default function TodayTab() {
       ) : (
         <div className="flex flex-col gap-2.5 pb-4">
           {activeRoutines.map((routine) => (
-            <RoutineCheckItem key={routine.id} routine={routine} currentLevel={todayRecord?.checks[routine.id] || 'none'} onToggle={handleToggle} />
+            <RoutineCheckItem key={routine.id} routine={routine} currentLevel={dayRecord?.checks[routine.id] || 'none'} onToggle={handleToggle} />
           ))}
         </div>
       )}

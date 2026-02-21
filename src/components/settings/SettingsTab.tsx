@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Plus, Edit3, Trash2, Moon, Sun, Download, Send, Tag, ChevronRight, User, FileText, LogOut, Palette, Check } from 'lucide-react';
+import { Plus, Edit3, Trash2, Moon, Sun, Download, Send, Tag, ChevronRight, ChevronLeft, User, FileText, LogOut, Palette, Check, Calendar } from 'lucide-react';
+import { addDays, subDays } from 'date-fns';
 import { useRoutineStore } from '../../stores/routineStore';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../contexts/AuthContext';
 import type { ColorTheme, Routine } from '../../types';
 import { exportJSON, exportCSV, exportMarkdown } from '../../utils/export';
 import { sendDiscordReport } from '../../utils/discord';
-import { formatDate } from '../../utils/date';
+import { formatDate, formatDisplayDate } from '../../utils/date';
 import RoutineForm, { IconDisplay } from './RoutineForm';
 import KeywordManager from './KeywordManager';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -29,6 +30,10 @@ export default function SettingsTab() {
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<'success' | 'success-noimage' | 'error' | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<{ type: 'routine'; routine: Routine } | { type: 'logout' } | null>(null);
+  const [reportDate, setReportDate] = useState(new Date());
+
+  const reportDateStr = formatDate(reportDate);
+  const isReportToday = reportDateStr === formatDate(new Date());
 
   const handleEdit = (routine: Routine) => { setEditingRoutine(routine); setShowForm(true); };
   const handleDelete = (routine: Routine) => { setConfirmTarget({ type: 'routine', routine }); };
@@ -42,11 +47,10 @@ export default function SettingsTab() {
   const handleSendReport = async () => {
     if (!settings.discordWebhookUrl) return;
     setSending(true); setSendResult(null);
-    const today = formatDate(new Date());
-    const record = records.find((r) => r.date === today);
-    const reflection = reflections.find((r) => r.date === today && r.type === 'daily');
+    const record = records.find((r) => r.date === reportDateStr);
+    const reflection = reflections.find((r) => r.date === reportDateStr && r.type === 'daily');
     const result = await sendDiscordReport(settings.discordWebhookUrl, {
-      date: today, routines, checks: record?.checks || {}, reflection,
+      date: reportDateStr, routines, checks: record?.checks || {}, reflection,
       username: settings.username || user?.displayName || '', records,
     });
     if (result.ok) { setSendResult(result.hasImage ? 'success' : 'success-noimage'); }
@@ -188,7 +192,31 @@ export default function SettingsTab() {
             </div>
             <button onClick={handleSaveWebhook} className="w-full py-2.5 rounded-xl bg-primary-600 text-white text-[13px] font-semibold active:scale-[0.98] transition-all shadow-sm shadow-primary-600/20">저장</button>
             {settings.discordWebhookUrl && (
-              <button onClick={handleSendReport} disabled={sending} aria-label="Discord 리포트 전송" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#5865F2] text-white font-semibold text-[13px] disabled:opacity-50 active:scale-[0.98] transition-all"><Send size={15} />{sending ? '전송 중...' : '오늘의 리포트 전송'}</button>
+              <>
+                {/* 날짜 선택 */}
+                <div className="pt-2 border-t border-border/50">
+                  <label className="block text-[12px] font-medium text-text-tertiary mb-1.5 ml-0.5 flex items-center gap-1"><Calendar size={12} />리포트 날짜</label>
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-1 py-1">
+                    <button onClick={() => setReportDate((d) => subDays(d, 1))} aria-label="이전 날짜" className="p-2 rounded-lg hover:bg-surface-secondary transition-colors">
+                      <ChevronLeft size={16} className="text-text-tertiary" />
+                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[13px] font-medium text-text-primary">{formatDisplayDate(reportDate)}</span>
+                      {!isReportToday && (
+                        <button onClick={() => setReportDate(new Date())} className="px-1.5 py-0.5 rounded-md bg-primary-50 dark:bg-primary-900/20 text-primary-600 text-[10px] font-semibold">
+                          오늘
+                        </button>
+                      )}
+                    </div>
+                    <button onClick={() => setReportDate((d) => addDays(d, 1))} aria-label="다음 날짜" className="p-2 rounded-lg hover:bg-surface-secondary transition-colors">
+                      <ChevronRight size={16} className="text-text-tertiary" />
+                    </button>
+                  </div>
+                </div>
+                <button onClick={handleSendReport} disabled={sending} aria-label="Discord 리포트 전송" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#5865F2] text-white font-semibold text-[13px] disabled:opacity-50 active:scale-[0.98] transition-all">
+                  <Send size={15} />{sending ? '전송 중...' : `${isReportToday ? '오늘의' : reportDateStr} 리포트 전송`}
+                </button>
+              </>
             )}
             {sendResult === 'success' && <p className="text-done text-[13px] text-center font-medium" role="status">이미지 포함 전송 완료!</p>}
             {sendResult === 'success-noimage' && <p className="text-yellow-500 text-[13px] text-center font-medium" role="status">텍스트만 전송됨</p>}
