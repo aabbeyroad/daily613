@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import type { ColorTheme, Routine } from '../../types';
 import { exportJSON, exportCSV, exportMarkdown } from '../../utils/export';
 import { sendDiscordReport } from '../../utils/discord';
-import { formatDate, formatDisplayDate } from '../../utils/date';
+import { formatDate, formatDisplayDate, getWeekKey } from '../../utils/date';
 import RoutineForm, { IconDisplay } from './RoutineForm';
 import KeywordManager from './KeywordManager';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -49,8 +49,10 @@ export default function SettingsTab() {
     setSending(true); setSendResult(null);
     const record = records.find((r) => r.date === reportDateStr);
     const reflection = reflections.find((r) => r.date === reportDateStr && r.type === 'daily');
+    const weekKey = getWeekKey(reportDate);
+    const weeklyReflection = reflections.find((r) => r.date === weekKey && r.type === 'weekly');
     const result = await sendDiscordReport(settings.discordWebhookUrl, {
-      date: reportDateStr, routines, checks: record?.checks || {}, reflection,
+      date: reportDateStr, routines, checks: record?.checks || {}, reflection, weeklyReflection,
       username: settings.username || user?.displayName || '', records,
     });
     if (result.ok) { setSendResult(result.hasImage ? 'success' : 'success-noimage'); }

@@ -6,6 +6,7 @@ interface ReportData {
   routines: Routine[];
   checks: Record<string, CheckLevel>;
   reflection?: Reflection;
+  weeklyReflection?: Reflection;
   username?: string;
   records?: DailyRecord[]; // 월간 통계용
 }
@@ -20,7 +21,7 @@ export const sendDiscordReport = async (
   webhookUrl: string,
   data: ReportData
 ): Promise<DiscordReportResult> => {
-  const { date, routines, checks, reflection, username, records } = data;
+  const { date, routines, checks, reflection, weeklyReflection, username, records } = data;
   const activeRoutines = routines.filter((r) => !r.archived);
   const total = activeRoutines.length;
   const doneCount = activeRoutines.filter((r) => checks[r.id] && checks[r.id] !== 'none').length;
@@ -95,6 +96,32 @@ export const sendDiscordReport = async (
     if (reflection.try) kptLines.push(`**Try:** ${reflection.try}`);
     if (kptLines.length > 0) {
       fields.push({ name: '📝 오늘의 회고', value: kptLines.join('\n'), inline: false });
+    }
+  }
+
+  // 주간 회고 (해당 주에 작성된 경우)
+  if (weeklyReflection) {
+    const weeklyKptLines = [];
+    if (weeklyReflection.keep) weeklyKptLines.push(`**Keep:** ${weeklyReflection.keep}`);
+    if (weeklyReflection.problem) weeklyKptLines.push(`**Problem:** ${weeklyReflection.problem}`);
+    if (weeklyReflection.try) weeklyKptLines.push(`**Try:** ${weeklyReflection.try}`);
+    if (weeklyKptLines.length > 0) {
+      fields.push({ name: '📆 이번 주 회고', value: weeklyKptLines.join('\n'), inline: false });
+    }
+
+    // 루틴별 평가
+    if (weeklyReflection.routineEvals && weeklyReflection.routineEvals.length > 0) {
+      const evalEmoji = { good: '👍', soso: '👌', bad: '👎' };
+      const evalLines = weeklyReflection.routineEvals.map((ev) => {
+        const routine = activeRoutines.find((r) => r.id === ev.routineId);
+        const routineName = routine?.name || '삭제된 루틴';
+        const iconPrefix = routine?.icon && !routine.icon.startsWith('lucide:') ? `${routine.icon} ` : '';
+        const emoji = evalEmoji[ev.evaluation] || '';
+        let line = `${emoji} ${iconPrefix}${routineName}: **${ev.evaluation.toUpperCase()}**`;
+        if (ev.improvement) line += `\n> ${ev.improvement}`;
+        return line;
+      }).join('\n');
+      fields.push({ name: '⭐ 루틴별 평가', value: evalLines, inline: false });
     }
   }
 
