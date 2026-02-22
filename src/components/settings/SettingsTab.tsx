@@ -208,7 +208,7 @@ export default function SettingsTab() {
                     </button>
                   </div>
                 </div>
-                <button onClick={handleSendReport} disabled={sending} aria-label="Discord 리포트 전송" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#5865F2] text-white font-semibold text-[13px] disabled:opacity-50 active:scale-[0.98] transition-all">
+                <button onClick={handleSendReport} disabled={sending} aria-label="Discord 리포트 전송" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-primary-600 text-white font-semibold text-[13px] disabled:opacity-50 active:scale-[0.98] transition-all shadow-sm shadow-primary-600/20">
                   <Send size={15} />{sending ? '전송 중...' : `${isReportToday ? '오늘의' : reportDateStr} 리포트 전송`}
                 </button>
               </>
