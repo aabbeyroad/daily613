@@ -8,7 +8,24 @@ import StatsTab from './components/stats/StatsTab';
 import ReflectionTab from './components/reflection/ReflectionTab';
 import SettingsTab from './components/settings/SettingsTab';
 import AuthPage from './components/auth/AuthPage';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X, AlertTriangle } from 'lucide-react';
+
+function SyncErrorBanner() {
+  const syncError = useRoutineStore((s) => s.syncError);
+  const clearSyncError = useRoutineStore((s) => s.clearSyncError);
+
+  if (!syncError) return null;
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[100] bg-red-500 text-white px-4 py-3 flex items-center gap-2 shadow-lg">
+      <AlertTriangle size={16} className="flex-shrink-0" />
+      <p className="text-[13px] font-medium flex-1">{syncError}</p>
+      <button onClick={clearSyncError} className="p-1 rounded hover:bg-red-600 transition-colors">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
 
 export default function App() {
   const activeTab = useRoutineStore((s) => s.activeTab);
@@ -17,12 +34,12 @@ export default function App() {
   const { user, loading: authLoading } = useAuth();
   useTheme();
 
-  // 사용자 로그인 시 Firestore에서 데이터 로드
+  const uid = user?.uid;
   useEffect(() => {
-    if (user) {
-      loadUserData(user.uid);
+    if (uid) {
+      loadUserData(uid);
     }
-  }, [user, loadUserData]);
+  }, [uid, loadUserData]);
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -31,7 +48,6 @@ export default function App() {
     }
   }, []);
 
-  // 인증 로딩 중
   if (authLoading) {
     return (
       <div className="min-h-dvh bg-surface flex items-center justify-center">
@@ -40,12 +56,10 @@ export default function App() {
     );
   }
 
-  // 로그인 안됨
   if (!user) {
     return <AuthPage />;
   }
 
-  // 데이터 로딩 중
   if (isLoading) {
     return (
       <div className="min-h-dvh bg-surface flex flex-col items-center justify-center gap-3">
@@ -56,11 +70,14 @@ export default function App() {
   }
 
   return (
-    <Layout>
-      {activeTab === 'today' && <TodayTab />}
-      {activeTab === 'stats' && <StatsTab />}
-      {activeTab === 'reflection' && <ReflectionTab />}
-      {activeTab === 'settings' && <SettingsTab />}
-    </Layout>
+    <>
+      <SyncErrorBanner />
+      <Layout>
+        {activeTab === 'today' && <TodayTab />}
+        {activeTab === 'stats' && <StatsTab />}
+        {activeTab === 'reflection' && <ReflectionTab />}
+        {activeTab === 'settings' && <SettingsTab />}
+      </Layout>
+    </>
   );
 }

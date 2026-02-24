@@ -20,29 +20,37 @@ const defaultData: UserData = {
   updatedAt: new Date().toISOString(),
 };
 
-export const getUserData = async (userId: string): Promise<UserData> => {
-  try {
-    const docRef = doc(db, 'users', userId);
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-      return docSnap.data() as UserData;
-    }
-    return defaultData;
-  } catch (error) {
-    console.error('Error loading user data:', error);
-    return defaultData;
+export const getUserData = async (userId: string): Promise<{ data: UserData; isNew: boolean }> => {
+  const docRef = doc(db, 'users', userId);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    return { data: docSnap.data() as UserData, isNew: false };
   }
+  return { data: defaultData, isNew: true };
 };
 
+const MAX_RETRIES = 3;
+
 export const saveUserData = async (userId: string, data: Partial<UserData>): Promise<void> => {
-  try {
-    const docRef = doc(db, 'users', userId);
-    await setDoc(docRef, {
-      ...data,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
-  } catch (error) {
-    console.error('Error saving user data:', error);
+  const docRef = doc(db, 'users', userId);
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      await setDoc(docRef, {
+        ...data,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+      return;
+    } catch (error) {
+      lastError = error;
+      console.error(`Error saving user data (attempt ${attempt + 1}/${MAX_RETRIES}):`, error);
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+      }
+    }
   }
+
+  throw lastError;
 };
