@@ -1,35 +1,57 @@
-import { CalendarCheck, BarChart3, BookOpen, Settings } from 'lucide-react';
-import { useRoutineStore } from '../../stores/routineStore';
+// ========================================
+// 하단 탭 바 - 대시보드 / 장보기 / 설정
+// ========================================
+
+import { useAppStore } from '../../stores/householdStore';
 import type { TabType } from '../../types';
 
-const tabs: { id: TabType; label: string; icon: typeof CalendarCheck }[] = [
-  { id: 'today', label: '오늘', icon: CalendarCheck },
-  { id: 'stats', label: '통계', icon: BarChart3 },
-  { id: 'reflection', label: '회고', icon: BookOpen },
-  { id: 'settings', label: '설정', icon: Settings },
+const TABS: { id: TabType; label: string; icon: string; activeIcon: string }[] = [
+  {
+    id: 'dashboard',
+    label: '결정',
+    icon: '📋',
+    activeIcon: '📋',
+  },
+  {
+    id: 'grocery',
+    label: '장보기',
+    icon: '🛒',
+    activeIcon: '🛒',
+  },
+  {
+    id: 'settings',
+    label: '설정',
+    icon: '⚙️',
+    activeIcon: '⚙️',
+  },
 ];
 
 export default function TabBar() {
-  const activeTab = useRoutineStore((s) => s.activeTab);
-  const setActiveTab = useRoutineStore((s) => s.setActiveTab);
+  const activeTab = useAppStore((s) => s.activeTab);
+  const setActiveTab = useAppStore((s) => s.setActiveTab);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-surface/80 backdrop-blur-xl border-t border-border/50 safe-bottom" aria-label="메인 탭 네비게이션">
-      <div className="max-w-lg mx-auto flex">
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            aria-label={`${label} 탭`}
-            aria-current={activeTab === id ? 'page' : undefined}
-            className={`flex-1 flex flex-col items-center py-2 pt-2.5 min-h-[50px] transition-colors ${
-              activeTab === id ? 'text-primary-600' : 'text-text-tertiary'
-            }`}
-          >
-            <Icon size={22} strokeWidth={activeTab === id ? 2.5 : 1.8} />
-            <span className={`text-[10px] mt-0.5 ${activeTab === id ? 'font-bold' : 'font-medium'}`}>{label}</span>
-          </button>
-        ))}
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-surface/90 backdrop-blur-lg border-t border-border safe-bottom z-40">
+      <div className="flex items-center justify-around max-w-lg mx-auto">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-col items-center py-2 px-4 min-w-[64px] transition-all ${
+                isActive ? 'text-primary-600' : 'text-text-tertiary'
+              }`}
+            >
+              <span className="text-xl leading-none mb-0.5">
+                {isActive ? tab.activeIcon : tab.icon}
+              </span>
+              <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </nav>
   );

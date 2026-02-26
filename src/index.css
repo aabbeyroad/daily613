@@ -72,6 +72,14 @@
 
 @layer utilities {
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pt-safe-top { padding-top: env(safe-area-inset-top, 0px); }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
   .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .border-3 { border-width: 3px; }
+}
+
+/* 부드러운 페이지 전환 */
+@layer base {
+  * { -webkit-overflow-scrolling: touch; }
+  input, textarea, select { font-size: 16px !important; } /* iOS 줌 방지 */
 }

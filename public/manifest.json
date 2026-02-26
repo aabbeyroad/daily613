@@ -1,7 +1,7 @@
 {
-  "name": "데일리613 루틴트래커",
-  "short_name": "Daily613",
-  "description": "맞벌이 육아인의 주체적인 일상",
+  "name": "미리정해 PreDecide",
+  "short_name": "미리정해",
+  "description": "반복되는 결정을 미리 정해두세요 - 맞벌이 부부를 위한 스마트 루틴 관리",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
