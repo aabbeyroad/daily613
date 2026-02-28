@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── 미리정해 (PreDecide) 규칙 ──
+
+    // 사용자 프로필: 본인만 읽기/쓰기
+    match /predecide_users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 가정 데이터: 인증된 사용자만 접근
+    // (멤버 검증은 앱 레벨에서 처리)
+    match /predecide_households/{householdId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if false; // 삭제 불가
+    }
+
+    // ── 기존 daily613 규칙 (유지) ──
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/{subcollection=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
