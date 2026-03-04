@@ -1,9 +1,10 @@
-import { CalendarCheck, BarChart3, BookOpen, Settings } from 'lucide-react';
+import { CalendarCheck, Timer, BarChart3, BookOpen, Settings } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
 import type { TabType } from '../../types';
 
 const tabs: { id: TabType; label: string; icon: typeof CalendarCheck }[] = [
   { id: 'today', label: '오늘', icon: CalendarCheck },
+  { id: 'tracking', label: '트래킹', icon: Timer },
   { id: 'stats', label: '통계', icon: BarChart3 },
   { id: 'reflection', label: '회고', icon: BookOpen },
   { id: 'settings', label: '설정', icon: Settings },
