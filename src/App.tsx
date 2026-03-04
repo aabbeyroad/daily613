@@ -6,8 +6,10 @@ import Layout from './components/layout/Layout';
 import TodayTab from './components/today/TodayTab';
 import StatsTab from './components/stats/StatsTab';
 import ReflectionTab from './components/reflection/ReflectionTab';
+import TrackingTab from './components/tracking/TrackingTab';
 import SettingsTab from './components/settings/SettingsTab';
 import AuthPage from './components/auth/AuthPage';
+import DailyReviewPopup from './components/common/DailyReviewPopup';
 import { Loader2, X, AlertTriangle } from 'lucide-react';
 
 function SyncErrorBanner() {
@@ -72,8 +74,10 @@ export default function App() {
   return (
     <>
       <SyncErrorBanner />
+      <DailyReviewPopup />
       <Layout>
         {activeTab === 'today' && <TodayTab />}
+        {activeTab === 'tracking' && <TrackingTab />}
         {activeTab === 'stats' && <StatsTab />}
         {activeTab === 'reflection' && <ReflectionTab />}
         {activeTab === 'settings' && <SettingsTab />}

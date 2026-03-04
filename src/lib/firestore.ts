@@ -1,11 +1,12 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Routine, DailyRecord, Reflection, AppSettings } from '../types';
+import type { Routine, DailyRecord, Reflection, AppSettings, TimeEntry } from '../types';
 
 export interface UserData {
   routines: Routine[];
   records: DailyRecord[];
   reflections: Reflection[];
+  timeEntries: TimeEntry[];
   keywords: string[];
   settings: AppSettings;
   updatedAt: string;
@@ -15,6 +16,7 @@ const defaultData: UserData = {
   routines: [],
   records: [],
   reflections: [],
+  timeEntries: [],
   keywords: [],
   settings: { discordWebhookUrl: '', darkMode: false, username: '' },
   updatedAt: new Date().toISOString(),
@@ -40,6 +42,7 @@ const removeUndefined = <T>(obj: T): T => {
 export const getUserData = async (userId: string): Promise<{ data: UserData; isNew: boolean }> => {
   const docRef = doc(db, 'users', userId);
   const docSnap = await getDoc(docRef);
+
   if (docSnap.exists()) {
     return { data: docSnap.data() as UserData, isNew: false };
   }
@@ -51,7 +54,11 @@ const MAX_RETRIES = 3;
 export const saveUserData = async (userId: string, data: Partial<UserData>): Promise<void> => {
   const docRef = doc(db, 'users', userId);
   let lastError: unknown;
-  const cleanData = removeUndefined({ ...data, updatedAt: new Date().toISOString() });
+
+  const cleanData = removeUndefined({
+    ...data,
+    updatedAt: new Date().toISOString(),
+  });
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
@@ -65,5 +72,6 @@ export const saveUserData = async (userId: string, data: Partial<UserData>): Pro
       }
     }
   }
+
   throw lastError;
 };
