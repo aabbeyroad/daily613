@@ -24,11 +24,6 @@ function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
-function isoToTimeStr(iso: string): string {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
 function Clock24({ entries, colorMap, statusText, isTracking, activeRoutineIcon, activeRoutineName }: {
   entries: { routineId: string; startMin: number; endMin: number }[];
   colorMap: Record<string, string>;
@@ -378,18 +373,22 @@ export default function TrackingTab() {
       {/* Available time mode */}
       {mode === 'available' && (
         <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-surface-secondary border border-border">
+          <div className={`p-4 rounded-2xl border transition-all ${isAvailableActive ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-surface-secondary border-border'}`}>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 flex-1">
+              {/* Clickable info area → opens modal */}
+              <div
+                className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
+                onClick={() => setSelectedRoutineId(AVAILABLE_ROUTINE_ID)}
+              >
                 <Clock size={18} className="text-text-tertiary" />
                 <span className="text-[14px] font-medium text-text-primary">가용시간</span>
+                <span className="text-[13px] font-mono text-text-secondary ml-auto">
+                  {availableCumMs > 0 ? formatDuration(availableCumMs) : '--'}
+                </span>
               </div>
-              <span className="text-[13px] font-mono text-text-secondary mr-2">
-                {availableCumMs > 0 ? formatDuration(availableCumMs) : '--'}
-              </span>
               <button
                 onClick={() => toggleTracking(AVAILABLE_ROUTINE_ID)}
-                className={`p-2.5 rounded-xl transition-all ${
+                className={`p-2.5 rounded-xl transition-all flex-shrink-0 ${
                   isAvailableActive
                     ? 'bg-red-500 text-white active:scale-95'
                     : 'bg-primary-600 text-white active:scale-95'
@@ -399,38 +398,27 @@ export default function TrackingTab() {
               </button>
             </div>
           </div>
-
-          {availableEntries.length > 0 && (
-            <div className="p-4 rounded-2xl bg-surface-secondary border border-border">
-              <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">오늘 가용시간 블록</h3>
-              <div className="space-y-1.5">
-                {[...availableEntries]
-                  .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-                  .map((entry) => {
-                    const entryMs = entry.endTime
-                      ? new Date(entry.endTime).getTime() - new Date(entry.startTime).getTime()
-                      : Date.now() - new Date(entry.startTime).getTime();
-                    return (
-                      <div key={entry.id} className="flex items-center justify-between py-1.5 px-1">
-                        <span className="text-[13px] font-mono text-text-primary">
-                          {isoToTimeStr(entry.startTime)} ~ {entry.endTime ? isoToTimeStr(entry.endTime) : '진행 중'}
-                        </span>
-                        <span className="text-[11px] font-mono text-text-tertiary">
-                          {formatDuration(entryMs)}
-                        </span>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {/* Routine detail modal */}
       {selectedRoutineId && (() => {
-        const routine = activeRoutines.find((r) => r.id === selectedRoutineId);
-        if (!routine) return null;
+        let routine;
+        if (selectedRoutineId === AVAILABLE_ROUTINE_ID) {
+          routine = {
+            id: AVAILABLE_ROUTINE_ID,
+            name: '가용시간',
+            icon: '⏱️',
+            color: AVAILABLE_COLOR,
+            keywords: [] as string[],
+            order: 0,
+            createdAt: '',
+            archived: false,
+          };
+        } else {
+          routine = activeRoutines.find((r) => r.id === selectedRoutineId);
+          if (!routine) return null;
+        }
         const routineEntries = todayEntries.filter((e) => e.routineId === selectedRoutineId);
         const routineTotalMs = cumulativeTime[selectedRoutineId] || 0;
         return (
