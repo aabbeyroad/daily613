@@ -2,6 +2,16 @@ export type CheckLevel = 'none' | 'done' | 'more' | 'max';
 
 export type TabType = 'today' | 'tracking' | 'stats' | 'reflection' | 'settings';
 
+export type ColorTheme = 'indigo' | 'rose' | 'emerald' | 'amber' | 'sky' | 'violet';
+
+export type RoutineEvaluation = 'good' | 'soso' | 'bad';
+
+export interface RoutineEval {
+  routineId: string;
+  evaluation: RoutineEvaluation;
+  improvement: string;
+}
+
 export interface Routine {
   id: string;
   name: string;
@@ -11,6 +21,9 @@ export interface Routine {
   order: number;
   createdAt: string;
   archived: boolean;
+  doneGoal?: string;
+  moreGoal?: string;
+  maxGoal?: string;
 }
 
 export interface DailyRecord {
@@ -22,7 +35,10 @@ export interface Reflection {
   id: string;
   date: string;
   type: 'daily' | 'weekly';
-  content: string;
+  keep: string;
+  problem: string;
+  try: string;
+  routineEvals?: RoutineEval[];
   createdAt: string;
   updatedAt: string;
 }
@@ -39,4 +55,5 @@ export interface AppSettings {
   discordWebhookUrl: string;
   darkMode: boolean;
   username: string;
+  colorTheme?: ColorTheme;
 }
