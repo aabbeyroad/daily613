@@ -1,14 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Play, Square } from 'lucide-react';
+import { Play, Square, Clock } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate } from '../../utils/date';
 import { IconDisplay } from '../settings/RoutineForm';
+import RoutineDetailModal from './RoutineDetailModal';
 
 const ROUTINE_COLORS = [
   '#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#3b82f6',
   '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444', '#06b6d4',
   '#84cc16', '#a855f7', '#f97316', '#22d3ee', '#e879f9',
 ];
+
+const AVAILABLE_ROUTINE_ID = '__available__';
+const AVAILABLE_COLOR = '#94a3b8';
 
 function formatDuration(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -20,9 +24,16 @@ function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
-function Clock24({ entries, colorMap }: {
+function isoToTimeStr(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function Clock24({ entries, colorMap, statusText, isTracking }: {
   entries: { routineId: string; startMin: number; endMin: number }[];
   colorMap: Record<string, string>;
+  statusText: string;
+  isTracking: boolean;
 }) {
   const size = 280;
   const cx = size / 2;
@@ -94,6 +105,7 @@ function Clock24({ entries, colorMap }: {
         <path key={i} d={arc.d} fill={colorMap[arc.routineId] || '#6366f1'} opacity={0.8} />
       ))}
 
+      {/* Current time indicator */}
       {(() => {
         const now = new Date();
         const nowMin = now.getHours() * 60 + now.getMinutes();
@@ -107,6 +119,21 @@ function Clock24({ entries, colorMap }: {
           />
         );
       })()}
+
+      {/* Center status text */}
+      <text
+        x={cx}
+        y={cy}
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="fill-text-primary font-semibold"
+        style={{ fontSize: 13 }}
+      >
+        {statusText}
+        {isTracking && (
+          <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite" />
+        )}
+      </text>
     </svg>
   );
 }
@@ -116,6 +143,8 @@ export default function TrackingTab() {
   const timeEntries = useRoutineStore((s) => s.timeEntries);
   const toggleTracking = useRoutineStore((s) => s.toggleTracking);
   const [, setTick] = useState(0);
+  const [mode, setMode] = useState<'routine' | 'available'>('routine');
+  const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
 
   const today = formatDate(new Date());
   const activeRoutines = useMemo(() => routines.filter((r) => !r.archived), [routines]);
@@ -125,6 +154,7 @@ export default function TrackingTab() {
     activeRoutines.forEach((r, i) => {
       map[r.id] = ROUTINE_COLORS[i % ROUTINE_COLORS.length];
     });
+    map[AVAILABLE_ROUTINE_ID] = AVAILABLE_COLOR;
     return map;
   }, [activeRoutines]);
 
@@ -143,14 +173,18 @@ export default function TrackingTab() {
 
   const clockEntries = useMemo(() => {
     const now = new Date();
-    return todayEntries.map((e) => {
+    const filtered = mode === 'available'
+      ? todayEntries.filter((e) => e.routineId === AVAILABLE_ROUTINE_ID)
+      : todayEntries.filter((e) => e.routineId !== AVAILABLE_ROUTINE_ID);
+    return filtered.map((e) => {
       const start = new Date(e.startTime);
       const end = e.endTime ? new Date(e.endTime) : now;
       const startMin = start.getHours() * 60 + start.getMinutes();
       const endMin = end.getHours() * 60 + end.getMinutes();
       return { routineId: e.routineId, startMin, endMin: endMin <= startMin ? endMin + 1 : endMin };
     });
-  }, [todayEntries, hasActive ? Math.floor(Date.now() / 1000) : 0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayEntries, mode, hasActive ? Math.floor(Date.now() / 1000) : 0]);
 
   const cumulativeTime = useMemo(() => {
     const now = Date.now();
@@ -161,87 +195,221 @@ export default function TrackingTab() {
       map[e.routineId] = (map[e.routineId] || 0) + (end - start);
     });
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayEntries, hasActive ? Math.floor(Date.now() / 1000) : 0]);
 
-  const totalTime = Object.values(cumulativeTime).reduce((a, b) => a + b, 0);
+  // Routine mode totals (exclude __available__)
+  const routineTotalTime = Object.entries(cumulativeTime)
+    .filter(([id]) => id !== AVAILABLE_ROUTINE_ID)
+    .reduce((sum, [, ms]) => sum + ms, 0);
+
+  // Available mode
+  const availableEntries = useMemo(() =>
+    todayEntries.filter((e) => e.routineId === AVAILABLE_ROUTINE_ID),
+    [todayEntries]
+  );
+  const isAvailableActive = availableEntries.some((e) => e.endTime === null);
+  const availableCumMs = cumulativeTime[AVAILABLE_ROUTINE_ID] || 0;
+
+  const currentTotalTime = mode === 'routine' ? routineTotalTime : availableCumMs;
+
+  const statusText = useMemo(() => {
+    if (mode === 'available') {
+      if (isAvailableActive) return '트래킹 중';
+      if (availableCumMs > 0) return formatDuration(availableCumMs);
+      return '시작하기';
+    }
+    if (hasActive) return '트래킹 중';
+    if (routineTotalTime > 0) return formatDuration(routineTotalTime);
+    return '시작하기';
+  }, [mode, hasActive, isAvailableActive, routineTotalTime, availableCumMs]);
+
+  const isCurrentlyTracking = mode === 'available' ? isAvailableActive : hasActive;
 
   return (
     <div className="px-4 pt-5 pb-4">
-      <h2 className="font-bold text-[15px] text-text-primary mb-4">시간 트래킹</h2>
-
+      {/* Chart section */}
       <div className="mb-5 p-4 rounded-2xl bg-surface-secondary border border-border">
-        <Clock24 entries={clockEntries} colorMap={colorMap} />
-        {totalTime > 0 && (
+        <Clock24
+          entries={clockEntries}
+          colorMap={colorMap}
+          statusText={statusText}
+          isTracking={isCurrentlyTracking}
+        />
+        {currentTotalTime > 0 && (
           <p className="text-center text-[12px] text-text-tertiary mt-2">
-            오늘 총 트래킹: <span className="font-bold text-text-primary">{formatDuration(totalTime)}</span>
+            오늘 총 트래킹: <span className="font-bold text-text-primary">{formatDuration(currentTotalTime)}</span>
           </p>
         )}
+
+        {/* Mode toggle */}
+        <div className="flex bg-surface-tertiary rounded-full p-1 mt-3">
+          <button
+            onClick={() => setMode('routine')}
+            className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+              mode === 'routine'
+                ? 'bg-surface text-text-primary shadow-sm'
+                : 'text-text-tertiary'
+            }`}
+          >
+            루틴
+          </button>
+          <button
+            onClick={() => setMode('available')}
+            className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+              mode === 'available'
+                ? 'bg-surface text-text-primary shadow-sm'
+                : 'text-text-tertiary'
+            }`}
+          >
+            가용시간
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-2 mb-5">
-        {activeRoutines.map((routine) => {
-          const isActive = todayEntries.some((e) => e.routineId === routine.id && e.endTime === null);
-          const cumMs = cumulativeTime[routine.id] || 0;
-          const color = colorMap[routine.id];
+      {/* Routine mode */}
+      {mode === 'routine' && (
+        <>
+          <div className="space-y-2 mb-5">
+            {activeRoutines.map((routine) => {
+              const isActive = todayEntries.some((e) => e.routineId === routine.id && e.endTime === null);
+              const cumMs = cumulativeTime[routine.id] || 0;
+              const color = colorMap[routine.id];
 
-          return (
-            <div key={routine.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isActive ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-surface-secondary border-border'}`}>
-              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+              return (
+                <div key={routine.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isActive ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-surface-secondary border-border'}`}>
+                  {/* Clickable info area → opens modal */}
+                  <div
+                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                    onClick={() => setSelectedRoutineId(routine.id)}
+                  >
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      {routine.icon && <IconDisplay icon={routine.icon} size={16} />}
+                      <span className="text-[13px] font-medium text-text-primary truncate">{routine.name}</span>
+                    </div>
+                    <span className="text-[12px] font-mono text-text-secondary flex-shrink-0">
+                      {cumMs > 0 ? formatDuration(cumMs) : '--'}
+                    </span>
+                  </div>
 
-              <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                {routine.icon && <IconDisplay icon={routine.icon} size={16} />}
-                <span className="text-[13px] font-medium text-text-primary truncate">{routine.name}</span>
+                  {/* Play/Stop button */}
+                  <button
+                    onClick={() => toggleTracking(routine.id)}
+                    className={`p-2 rounded-lg transition-all flex-shrink-0 ${
+                      isActive
+                        ? 'bg-red-500 text-white active:scale-95'
+                        : 'bg-primary-600 text-white active:scale-95'
+                    }`}
+                  >
+                    {isActive ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {routineTotalTime > 0 && (
+            <div className="p-4 rounded-2xl bg-surface-secondary border border-border">
+              <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">일일 누적 시간</h3>
+              <div className="space-y-2">
+                {activeRoutines
+                  .filter((r) => (cumulativeTime[r.id] || 0) > 0)
+                  .sort((a, b) => (cumulativeTime[b.id] || 0) - (cumulativeTime[a.id] || 0))
+                  .map((routine) => {
+                    const ms = cumulativeTime[routine.id] || 0;
+                    const pct = routineTotalTime > 0 ? (ms / routineTotalTime) * 100 : 0;
+                    const color = colorMap[routine.id];
+                    return (
+                      <div key={routine.id}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                            {routine.icon && <IconDisplay icon={routine.icon} size={13} />}
+                            <span className="text-[12px] font-medium text-text-primary">{routine.name}</span>
+                          </div>
+                          <span className="text-[11px] font-mono text-text-secondary">{formatDuration(ms)}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-surface-tertiary overflow-hidden">
+                          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
+            </div>
+          )}
+        </>
+      )}
 
-              <span className="text-[12px] font-mono text-text-secondary flex-shrink-0">
-                {cumMs > 0 ? formatDuration(cumMs) : '--'}
+      {/* Available time mode */}
+      {mode === 'available' && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-surface-secondary border border-border">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-1">
+                <Clock size={18} className="text-text-tertiary" />
+                <span className="text-[14px] font-medium text-text-primary">가용시간</span>
+              </div>
+              <span className="text-[13px] font-mono text-text-secondary mr-2">
+                {availableCumMs > 0 ? formatDuration(availableCumMs) : '--'}
               </span>
-
               <button
-                onClick={() => toggleTracking(routine.id)}
-                className={`p-2 rounded-lg transition-all flex-shrink-0 ${
-                  isActive
+                onClick={() => toggleTracking(AVAILABLE_ROUTINE_ID)}
+                className={`p-2.5 rounded-xl transition-all ${
+                  isAvailableActive
                     ? 'bg-red-500 text-white active:scale-95'
                     : 'bg-primary-600 text-white active:scale-95'
                 }`}
               >
-                {isActive ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                {isAvailableActive ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
               </button>
             </div>
-          );
-        })}
-      </div>
-
-      {totalTime > 0 && (
-        <div className="p-4 rounded-2xl bg-surface-secondary border border-border">
-          <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">일일 누적 시간</h3>
-          <div className="space-y-2">
-            {activeRoutines
-              .filter((r) => (cumulativeTime[r.id] || 0) > 0)
-              .sort((a, b) => (cumulativeTime[b.id] || 0) - (cumulativeTime[a.id] || 0))
-              .map((routine) => {
-                const ms = cumulativeTime[routine.id] || 0;
-                const pct = totalTime > 0 ? (ms / totalTime) * 100 : 0;
-                const color = colorMap[routine.id];
-                return (
-                  <div key={routine.id}>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                        {routine.icon && <IconDisplay icon={routine.icon} size={13} />}
-                        <span className="text-[12px] font-medium text-text-primary">{routine.name}</span>
-                      </div>
-                      <span className="text-[11px] font-mono text-text-secondary">{formatDuration(ms)}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-surface-tertiary overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-                    </div>
-                  </div>
-                );
-              })}
           </div>
+
+          {availableEntries.length > 0 && (
+            <div className="p-4 rounded-2xl bg-surface-secondary border border-border">
+              <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">오늘 가용시간 블록</h3>
+              <div className="space-y-1.5">
+                {[...availableEntries]
+                  .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                  .map((entry) => {
+                    const entryMs = entry.endTime
+                      ? new Date(entry.endTime).getTime() - new Date(entry.startTime).getTime()
+                      : Date.now() - new Date(entry.startTime).getTime();
+                    return (
+                      <div key={entry.id} className="flex items-center justify-between py-1.5 px-1">
+                        <span className="text-[13px] font-mono text-text-primary">
+                          {isoToTimeStr(entry.startTime)} ~ {entry.endTime ? isoToTimeStr(entry.endTime) : '진행 중'}
+                        </span>
+                        <span className="text-[11px] font-mono text-text-tertiary">
+                          {formatDuration(entryMs)}
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Routine detail modal */}
+      {selectedRoutineId && (() => {
+        const routine = activeRoutines.find((r) => r.id === selectedRoutineId);
+        if (!routine) return null;
+        const routineEntries = todayEntries.filter((e) => e.routineId === selectedRoutineId);
+        const routineTotalMs = cumulativeTime[selectedRoutineId] || 0;
+        return (
+          <RoutineDetailModal
+            routine={routine}
+            entries={routineEntries}
+            totalMs={routineTotalMs}
+            color={colorMap[selectedRoutineId]}
+            onClose={() => setSelectedRoutineId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

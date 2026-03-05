@@ -38,6 +38,8 @@ interface RoutineStore {
   toggleTracking: (routineId: string) => void;
   getActiveTracking: (routineId: string) => TimeEntry | undefined;
   getTimeEntriesForDate: (date: string) => TimeEntry[];
+  addTimeEntry: (entry: Omit<TimeEntry, 'id'>) => void;
+  updateTimeEntry: (id: string, updates: Partial<Pick<TimeEntry, 'startTime' | 'endTime'>>) => void;
   deleteTimeEntry: (id: string) => void;
 
   addKeyword: (keyword: string) => void;
@@ -240,6 +242,23 @@ export const useRoutineStore = create<RoutineStore>()((set, get) => ({
 
   getTimeEntriesForDate: (date) =>
     get().timeEntries.filter((e) => e.date === date),
+
+  addTimeEntry: (entry) => {
+    const { userId, timeEntries } = get();
+    const newEntry: TimeEntry = { ...entry, id: generateId() };
+    const newEntries = [...timeEntries, newEntry];
+    set({ timeEntries: newEntries });
+    syncToFirestore(userId, { timeEntries: newEntries }, (err) => set({ syncError: err }));
+  },
+
+  updateTimeEntry: (id, updates) => {
+    const { userId, timeEntries } = get();
+    const newEntries = timeEntries.map((e) =>
+      e.id === id ? { ...e, ...updates } : e
+    );
+    set({ timeEntries: newEntries });
+    syncToFirestore(userId, { timeEntries: newEntries }, (err) => set({ syncError: err }));
+  },
 
   deleteTimeEntry: (id) => {
     const { userId, timeEntries } = get();
