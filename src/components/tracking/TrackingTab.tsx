@@ -29,13 +29,15 @@ function isoToTimeStr(iso: string): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function Clock24({ entries, colorMap, statusText, isTracking }: {
+function Clock24({ entries, colorMap, statusText, isTracking, activeRoutineIcon, activeRoutineName }: {
   entries: { routineId: string; startMin: number; endMin: number }[];
   colorMap: Record<string, string>;
   statusText: string;
   isTracking: boolean;
+  activeRoutineIcon?: string;
+  activeRoutineName?: string;
 }) {
-  const size = 280;
+  const size = 310;
   const cx = size / 2;
   const cy = size / 2;
   const outerR = 120;
@@ -86,7 +88,7 @@ function Clock24({ entries, colorMap, statusText, isTracking }: {
   });
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[280px] mx-auto">
+    <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[310px] mx-auto">
       <circle cx={cx} cy={cy} r={outerR} fill="none" className="stroke-border" strokeWidth={1} />
       <circle cx={cx} cy={cy} r={innerR} fill="none" className="stroke-border" strokeWidth={1} />
 
@@ -120,20 +122,40 @@ function Clock24({ entries, colorMap, statusText, isTracking }: {
         );
       })()}
 
-      {/* Center status text */}
-      <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
-        dominantBaseline="central"
-        className="fill-text-primary font-semibold"
-        style={{ fontSize: 13 }}
-      >
-        {statusText}
-        {isTracking && (
-          <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite" />
-        )}
-      </text>
+      {/* Center status */}
+      {isTracking && activeRoutineIcon && activeRoutineName ? (
+        <g>
+          {/* Routine icon (emoji only) */}
+          {!activeRoutineIcon.startsWith('lucide:') && (
+            <text x={cx} y={cy - 20} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 22 }}>
+              {activeRoutineIcon}
+            </text>
+          )}
+          {/* Routine name */}
+          <text x={cx} y={cy + (activeRoutineIcon.startsWith('lucide:') ? -4 : 4)} textAnchor="middle" dominantBaseline="central" className="fill-text-primary font-medium" style={{ fontSize: 11 }}>
+            {activeRoutineName.length > 8 ? activeRoutineName.slice(0, 8) + '…' : activeRoutineName}
+          </text>
+          {/* Blinking 트래킹 중 */}
+          <text x={cx} y={cy + 22} textAnchor="middle" dominantBaseline="central" className="fill-primary-600 font-semibold" style={{ fontSize: 10 }}>
+            트래킹 중
+            <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite" />
+          </text>
+        </g>
+      ) : (
+        <text
+          x={cx}
+          y={cy}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="fill-text-primary font-semibold"
+          style={{ fontSize: 13 }}
+        >
+          {statusText}
+          {isTracking && (
+            <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite" />
+          )}
+        </text>
+      )}
     </svg>
   );
 }
@@ -226,15 +248,26 @@ export default function TrackingTab() {
 
   const isCurrentlyTracking = mode === 'available' ? isAvailableActive : hasActive;
 
+  // Active routine info for center status display
+  const activeRoutineInfo = useMemo(() => {
+    if (mode === 'available') return null;
+    const activeEntry = todayEntries.find((e) => e.endTime === null && e.routineId !== AVAILABLE_ROUTINE_ID);
+    if (!activeEntry) return null;
+    const routine = activeRoutines.find((r) => r.id === activeEntry.routineId);
+    return routine ? { icon: routine.icon, name: routine.name } : null;
+  }, [mode, todayEntries, activeRoutines]);
+
   return (
     <div className="px-4 pt-5 pb-4">
       {/* Chart section */}
-      <div className="mb-5 p-4 rounded-2xl bg-surface-secondary border border-border">
+      <div className="mb-5 p-4">
         <Clock24
           entries={clockEntries}
           colorMap={colorMap}
           statusText={statusText}
           isTracking={isCurrentlyTracking}
+          activeRoutineIcon={activeRoutineInfo?.icon}
+          activeRoutineName={activeRoutineInfo?.name}
         />
         {currentTotalTime > 0 && (
           <p className="text-center text-[12px] text-text-tertiary mt-2">
