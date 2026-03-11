@@ -170,6 +170,21 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
       ctx.beginPath();
       roundRect(ctx, x, y, cellWidth, rowHeight, 4);
       ctx.fill();
+
+      // Cell text (goal description or level label)
+      if (level !== 'none') {
+        const goalText = level === 'done' ? routine.doneGoal
+                       : level === 'more' ? routine.moreGoal
+                       : routine.maxGoal;
+        const displayText = goalText || (level === 'done' ? 'Done' : level === 'more' ? 'More' : 'Max');
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 7px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const truncatedGoal = truncateText(ctx, displayText, cellWidth - 6);
+        ctx.fillText(truncatedGoal, x + cellWidth / 2, y + rowHeight / 2);
+        ctx.textAlign = 'left';
+      }
     });
 
     // Routine rate (right column)
