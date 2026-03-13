@@ -8,14 +8,10 @@ export default function KeywordFilter() {
   if (keywords.length === 0) return null;
 
   return (
-    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
+    <div className="chip-row">
       <button
         onClick={() => setSelectedKeyword(null)}
-        className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-          selectedKeyword === null
-            ? 'bg-primary-600 text-white'
-            : 'bg-surface-tertiary text-text-secondary'
-        }`}
+        className={`chip ${selectedKeyword === null ? 'chip--active' : ''}`}
       >
         전체
       </button>
@@ -23,11 +19,7 @@ export default function KeywordFilter() {
         <button
           key={kw}
           onClick={() => setSelectedKeyword(selectedKeyword === kw ? null : kw)}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-            selectedKeyword === kw
-              ? 'bg-primary-600 text-white'
-              : 'bg-surface-tertiary text-text-secondary'
-          }`}
+          className={`chip ${selectedKeyword === kw ? 'chip--active' : ''}`}
         >
           {kw}
         </button>

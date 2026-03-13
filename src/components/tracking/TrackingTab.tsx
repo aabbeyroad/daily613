@@ -4,6 +4,7 @@ import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate } from '../../utils/date';
 import { IconDisplay } from '../settings/RoutineForm';
 import RoutineDetailModal from './RoutineDetailModal';
+import { Badge, Button, Screen, ScreenHeader, SectionCard, SegmentedControl } from '../ui/primitives';
 
 const ROUTINE_COLORS = [
   '#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#3b82f6',
@@ -253,9 +254,15 @@ export default function TrackingTab() {
   }, [mode, todayEntries, activeRoutines]);
 
   return (
-    <div className="px-4 pt-5 pb-4">
-      {/* Chart section */}
-      <div className="mb-5 p-4">
+    <Screen>
+      <ScreenHeader
+        eyebrow="Tracking"
+        title="시간의 흐름 보기"
+        description="실행 중인 루틴과 가용 시간을 한눈에 보며, 하루의 집중 분포를 부드럽게 파악합니다."
+        trailing={isCurrentlyTracking ? <Badge tone="success">진행 중</Badge> : null}
+      />
+
+      <SectionCard title="오늘의 시간 흐름" subtitle="원형 타임라인과 모드 전환을 통해 하루의 사용 시간을 살펴봅니다.">
         <Clock24
           entries={clockEntries}
           colorMap={colorMap}
@@ -265,81 +272,71 @@ export default function TrackingTab() {
           activeRoutineName={activeRoutineInfo?.name}
         />
         {currentTotalTime > 0 && (
-          <p className="text-center text-[12px] text-text-tertiary mt-2">
-            오늘 총 트래킹: <span className="font-bold text-text-primary">{formatDuration(currentTotalTime)}</span>
+          <p className="mt-2 text-center text-[12px]" style={{ color: 'var(--ds-text-secondary)' }}>
+            오늘 총 트래킹: <span style={{ color: 'var(--ds-text-primary)', fontWeight: 700 }}>{formatDuration(currentTotalTime)}</span>
           </p>
         )}
 
-        {/* Mode toggle */}
-        <div className="flex bg-surface-tertiary rounded-full p-1 mt-3">
-          <button
-            onClick={() => setMode('routine')}
-            className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
-              mode === 'routine'
-                ? 'bg-surface text-text-primary shadow-sm'
-                : 'text-text-tertiary'
-            }`}
-          >
-            루틴
-          </button>
-          <button
-            onClick={() => setMode('available')}
-            className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
-              mode === 'available'
-                ? 'bg-surface text-text-primary shadow-sm'
-                : 'text-text-tertiary'
-            }`}
-          >
-            가용시간
-          </button>
+        <div className="mt-4">
+          <SegmentedControl
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'routine', label: '루틴' },
+              { value: 'available', label: '가용시간' },
+            ]}
+          />
         </div>
-      </div>
+      </SectionCard>
 
-      {/* Routine mode */}
       {mode === 'routine' && (
         <>
-          <div className="space-y-2 mb-5">
+          <SectionCard title="루틴별 타이머" subtitle="각 루틴의 누적 시간을 확인하고 바로 시작하거나 중지할 수 있습니다.">
+          <div className="space-y-2">
             {activeRoutines.map((routine) => {
               const isActive = todayEntries.some((e) => e.routineId === routine.id && e.endTime === null);
               const cumMs = cumulativeTime[routine.id] || 0;
               const color = colorMap[routine.id];
 
               return (
-                <div key={routine.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isActive ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-surface-secondary border-border'}`}>
-                  {/* Clickable info area → opens modal */}
+                <div
+                  key={routine.id}
+                  className="list-row"
+                  style={{
+                    background: isActive ? 'var(--ds-bg-accent)' : 'var(--ds-bg-elevated)',
+                    borderColor: isActive ? 'rgba(54, 90, 168, 0.16)' : 'var(--ds-border)',
+                  }}
+                >
                   <div
-                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
                     onClick={() => setSelectedRoutineId(routine.id)}
                   >
                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-1 items-center gap-1.5">
                       {routine.icon && <IconDisplay icon={routine.icon} size={16} />}
-                      <span className="text-[13px] font-medium text-text-primary truncate">{routine.name}</span>
+                      <span className="truncate text-[14px] font-medium" style={{ color: 'var(--ds-text-primary)' }}>{routine.name}</span>
                     </div>
-                    <span className="text-[12px] font-mono text-text-secondary flex-shrink-0">
+                    <span className="flex-shrink-0 text-[12px] font-mono" style={{ color: 'var(--ds-text-secondary)' }}>
                       {cumMs > 0 ? formatDuration(cumMs) : '--'}
                     </span>
                   </div>
 
-                  {/* Play/Stop button */}
-                  <button
+                  <Button
                     onClick={() => toggleTracking(routine.id)}
-                    className={`p-2 rounded-lg transition-all flex-shrink-0 ${
-                      isActive
-                        ? 'bg-red-500 text-white active:scale-95'
-                        : 'bg-primary-600 text-white active:scale-95'
-                    }`}
+                    variant={isActive ? 'danger' : 'primary'}
+                    size="icon"
+                    className="flex-shrink-0"
                   >
                     {isActive ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-                  </button>
+                  </Button>
                 </div>
               );
             })}
           </div>
+          </SectionCard>
 
           {routineTotalTime > 0 && (
-            <div className="p-4 rounded-2xl bg-surface-secondary border border-border">
-              <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">일일 누적 시간</h3>
+            <SectionCard title="일일 누적 시간" subtitle="오늘 사용한 시간을 루틴별 비중으로 비교합니다.">
               <div className="space-y-2">
                 {activeRoutines
                   .filter((r) => (cumulativeTime[r.id] || 0) > 0)
@@ -354,51 +351,47 @@ export default function TrackingTab() {
                           <div className="flex items-center gap-1.5">
                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
                             {routine.icon && <IconDisplay icon={routine.icon} size={13} />}
-                            <span className="text-[12px] font-medium text-text-primary">{routine.name}</span>
+                            <span className="text-[12px] font-medium" style={{ color: 'var(--ds-text-primary)' }}>{routine.name}</span>
                           </div>
-                          <span className="text-[11px] font-mono text-text-secondary">{formatDuration(ms)}</span>
+                          <span className="text-[11px] font-mono" style={{ color: 'var(--ds-text-secondary)' }}>{formatDuration(ms)}</span>
                         </div>
-                        <div className="h-2 rounded-full bg-surface-tertiary overflow-hidden">
+                        <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--ds-bg-tertiary)' }}>
                           <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
                         </div>
                       </div>
                     );
                   })}
               </div>
-            </div>
+            </SectionCard>
           )}
         </>
       )}
 
-      {/* Available time mode */}
       {mode === 'available' && (
-        <div className="space-y-4">
-          <div className={`p-4 rounded-2xl border transition-all ${isAvailableActive ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-surface-secondary border-border'}`}>
+        <SectionCard title="가용시간" subtitle="루틴 외의 자유 시간을 별도 트랙으로 기록합니다.">
+          <div className="rounded-[24px] border p-4 transition-all" style={{ background: isAvailableActive ? 'var(--ds-bg-accent)' : 'var(--ds-bg-elevated)', borderColor: isAvailableActive ? 'rgba(54, 90, 168, 0.16)' : 'var(--ds-border)' }}>
             <div className="flex items-center gap-3">
-              {/* Clickable info area → opens modal */}
               <div
                 className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
                 onClick={() => setSelectedRoutineId(AVAILABLE_ROUTINE_ID)}
               >
-                <Clock size={18} className="text-text-tertiary" />
-                <span className="text-[14px] font-medium text-text-primary">가용시간</span>
-                <span className="text-[13px] font-mono text-text-secondary ml-auto">
+                <Clock size={18} style={{ color: 'var(--ds-text-tertiary)' }} />
+                <span className="text-[14px] font-medium" style={{ color: 'var(--ds-text-primary)' }}>가용시간</span>
+                <span className="ml-auto text-[13px] font-mono" style={{ color: 'var(--ds-text-secondary)' }}>
                   {availableCumMs > 0 ? formatDuration(availableCumMs) : '--'}
                 </span>
               </div>
-              <button
+              <Button
                 onClick={() => toggleTracking(AVAILABLE_ROUTINE_ID)}
-                className={`p-2.5 rounded-xl transition-all flex-shrink-0 ${
-                  isAvailableActive
-                    ? 'bg-red-500 text-white active:scale-95'
-                    : 'bg-primary-600 text-white active:scale-95'
-                }`}
+                variant={isAvailableActive ? 'danger' : 'primary'}
+                size="icon"
+                className="flex-shrink-0"
               >
                 {isAvailableActive ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
+        </SectionCard>
       )}
 
       {/* Routine detail modal */}
@@ -431,6 +424,6 @@ export default function TrackingTab() {
           />
         );
       })()}
-    </div>
+    </Screen>
   );
 }
