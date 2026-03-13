@@ -1,6 +1,7 @@
 import { Check } from 'lucide-react';
 import { IconDisplay } from '../settings/RoutineForm';
 import type { Routine, CheckLevel } from '../../types';
+import { Badge } from '../ui/primitives';
 
 interface Props {
   routine: Routine;
@@ -8,10 +9,10 @@ interface Props {
   onToggle: (routineId: string, level: CheckLevel) => void;
 }
 
-const levels: { key: CheckLevel; label: string; color: string; bg: string; activeBorder: string }[] = [
-  { key: 'done', label: 'Done', color: 'text-done', bg: 'bg-done', activeBorder: 'border-done' },
-  { key: 'more', label: 'More', color: 'text-more', bg: 'bg-more', activeBorder: 'border-more' },
-  { key: 'max', label: 'Max', color: 'text-max', bg: 'bg-max', activeBorder: 'border-max' },
+const levels: { key: CheckLevel; label: string; color: string; bg: string }[] = [
+  { key: 'done', label: 'Done', color: 'var(--color-done)', bg: 'rgba(52, 168, 83, 0.9)' },
+  { key: 'more', label: 'More', color: 'var(--color-more)', bg: 'rgba(59, 130, 246, 0.9)' },
+  { key: 'max', label: 'Max', color: 'var(--color-max)', bg: 'rgba(109, 91, 208, 0.92)' },
 ];
 
 export default function RoutineCheckItem({ routine, currentLevel, onToggle }: Props) {
@@ -29,19 +30,25 @@ export default function RoutineCheckItem({ routine, currentLevel, onToggle }: Pr
   const currentIndex = getLevelIndex(currentLevel);
 
   return (
-    <div className={`p-3.5 rounded-2xl border transition-all ${currentLevel !== 'none' ? 'bg-surface-secondary border-border shadow-sm' : 'bg-surface border-border'}`}>
-      <div className="flex items-center gap-2.5 mb-2.5">
+    <div
+      className="card p-4 transition-all"
+      style={{
+        background: currentLevel !== 'none' ? 'var(--ds-bg-elevated)' : 'var(--ds-bg-secondary)',
+        borderColor: currentLevel !== 'none' ? 'var(--ds-border-strong)' : 'var(--ds-border)',
+      }}
+    >
+      <div className="mb-3 flex items-center gap-2.5">
         {routine.icon && <IconDisplay icon={routine.icon} size={20} />}
-        <h3 className="font-semibold text-[15px] text-text-primary flex-1">{routine.name}</h3>
+        <h3 className="flex-1 text-[15px] font-semibold" style={{ color: 'var(--ds-text-primary)' }}>{routine.name}</h3>
         {routine.keywords.length > 0 && (
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {routine.keywords.map((kw) => (
-              <span key={kw} className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 font-medium">{kw}</span>
+              <Badge key={kw} tone="accent">{kw}</Badge>
             ))}
           </div>
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {levels.map((level, idx) => {
           const isActive = currentIndex >= idx;
           const goalText = level.key === 'done' ? routine.doneGoal : level.key === 'more' ? routine.moreGoal : routine.maxGoal;
@@ -49,13 +56,25 @@ export default function RoutineCheckItem({ routine, currentLevel, onToggle }: Pr
             <button
               key={level.key}
               onClick={() => handleClick(level.key)}
-              className={`flex-1 py-2 px-2 rounded-xl border-2 transition-all active:scale-95 ${isActive ? `${level.bg} border-transparent text-white` : `border-border bg-surface-secondary ${level.color}`}`}
+              className="rounded-[20px] border px-2 py-3 text-center transition-all active:scale-95"
+              style={{
+                borderColor: isActive ? 'transparent' : 'var(--ds-border)',
+                background: isActive ? level.bg : 'var(--ds-bg-secondary)',
+                color: isActive ? '#fff' : level.color,
+              }}
             >
               <div className="flex items-center justify-center gap-1">
                 {isActive && <Check size={13} strokeWidth={3} />}
                 <span className="text-xs font-bold">{level.label}</span>
               </div>
-              {goalText && <div className={`text-[10px] mt-0.5 truncate text-center ${isActive ? 'text-white/70' : 'text-text-tertiary'}`}>{goalText}</div>}
+              {goalText ? (
+                <div
+                  className="mt-1 truncate text-center text-[10px]"
+                  style={{ color: isActive ? 'rgba(255,255,255,0.76)' : 'var(--ds-text-tertiary)' }}
+                >
+                  {goalText}
+                </div>
+              ) : null}
             </button>
           );
         })}
