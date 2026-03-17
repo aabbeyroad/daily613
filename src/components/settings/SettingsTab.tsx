@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Plus, Edit3, Trash2, Moon, Sun, Download, Send, Tag, ChevronRight, ChevronLeft, FileText, LogOut, Palette, Check, Calendar } from 'lucide-react';
+import { Plus, Edit3, Trash2, Moon, Sun, Download, Send, Tag, ChevronRight, ChevronLeft, FileText, LogOut, Palette, Check, Calendar, BookOpen } from 'lucide-react';
 import { addDays, subDays } from 'date-fns';
 import { useRoutineStore } from '../../stores/routineStore';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../contexts/AuthContext';
 import type { ColorTheme, Routine } from '../../types';
-import { exportJSON, exportCSV, exportMarkdown } from '../../utils/export';
+import { exportJSON, exportCSV, exportMarkdown, exportObsidianNote } from '../../utils/export';
 import { sendDiscordReport } from '../../utils/discord';
 import { formatDate, formatDisplayDate, getWeekKey } from '../../utils/date';
 import RoutineForm, { IconDisplay } from './RoutineForm';
@@ -60,6 +60,14 @@ export default function SettingsTab() {
     else { setSendResult('error'); }
     setSending(false);
     setTimeout(() => setSendResult(null), 3000);
+  };
+
+  const handleExportObsidian = () => {
+    const record = records.find((r) => r.date === reportDateStr);
+    const reflection = reflections.find((r) => r.date === reportDateStr && r.type === 'daily');
+    const weekKey = getWeekKey(reportDate);
+    const weeklyReflection = reflections.find((r) => r.date === weekKey && r.type === 'weekly');
+    exportObsidianNote(reportDateStr, routines, record?.checks || {}, reflection, weeklyReflection);
   };
 
   const handleLogout = () => { setConfirmTarget({ type: 'logout' }); };
@@ -209,6 +217,9 @@ export default function SettingsTab() {
                 </div>
                 <Button onClick={handleSendReport} disabled={sending} aria-label="Discord 리포트 전송" variant="primary" size="lg" fullWidth>
                   <Send size={15} />{sending ? '전송 중...' : `${isReportToday ? '오늘의' : reportDateStr} 리포트 전송`}
+                </Button>
+                <Button onClick={handleExportObsidian} aria-label="Obsidian 노트로 내보내기" variant="secondary" size="lg" fullWidth>
+                  <BookOpen size={15} />{`${isReportToday ? '오늘의' : reportDateStr} 옵시디언 노트 저장`}
                 </Button>
               </>
             )}

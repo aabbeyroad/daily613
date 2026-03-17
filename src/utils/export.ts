@@ -1,4 +1,4 @@
-import type { Routine, DailyRecord, Reflection } from '../types';
+import type { Routine, DailyRecord, Reflection, CheckLevel } from '../types';
 
 interface ExportData {
   routines: Routine[];
@@ -215,6 +215,96 @@ export const exportMarkdown = (data: ExportData): void => {
   const a = document.createElement('a');
   a.href = url;
   a.download = `routine-records-${new Date().toISOString().slice(0, 10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// Obsidian 데일리 노트 내보내기 (특정 날짜 하루치)
+export const exportObsidianNote = (
+  date: string,
+  routines: Routine[],
+  checks: Record<string, CheckLevel>,
+  reflection?: Reflection,
+  weeklyReflection?: Reflection
+): void => {
+  const activeRoutines = routines.filter((r) => !r.archived);
+  const doneCount = activeRoutines.filter((r) => checks[r.id] && checks[r.id] !== 'none').length;
+  const total = activeRoutines.length;
+  const rate = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+  const levelEmoji = (level: CheckLevel): string => {
+    switch (level) {
+      case 'max': return '🟣';
+      case 'more': return '🔵';
+      case 'done': return '🟢';
+      default: return '⚪';
+    }
+  };
+
+  // YAML 프론트매터
+  let md = `---\n`;
+  md += `date: ${date}\n`;
+  md += `tags: [루틴, 데일리노트]\n`;
+  md += `achievement: ${rate}\n`;
+  md += `---\n\n`;
+
+  md += `# 📅 ${date}\n\n`;
+
+  // 달성 현황 요약
+  md += `## 📊 달성 현황\n\n`;
+  md += `- Done: ${doneCount}/${total} (달성률 **${rate}%**)\n\n`;
+
+  // 루틴 상세
+  md += `## ✅ 루틴\n\n`;
+  activeRoutines.forEach((routine) => {
+    const level = checks[routine.id] || 'none';
+    const emoji = levelEmoji(level);
+    let goalText = '';
+    if (level === 'done' && routine.doneGoal) goalText = ` (${routine.doneGoal})`;
+    else if (level === 'more' && routine.moreGoal) goalText = ` (${routine.moreGoal})`;
+    else if (level === 'max' && routine.maxGoal) goalText = ` (${routine.maxGoal})`;
+    const iconPrefix = routine.icon && !routine.icon.startsWith('lucide:') ? `${routine.icon} ` : '';
+    const levelText = level === 'none' ? '-' : `**${level.toUpperCase()}**${goalText}`;
+    md += `- ${emoji} ${iconPrefix}${routine.name}: ${levelText}\n`;
+  });
+  md += '\n';
+
+  // 일간 회고
+  if (reflection) {
+    md += `## 📝 오늘의 회고\n\n`;
+    if (reflection.keep) md += `**Keep**: ${reflection.keep}\n\n`;
+    if (reflection.problem) md += `**Problem**: ${reflection.problem}\n\n`;
+    if (reflection.try) md += `**Try**: ${reflection.try}\n\n`;
+  }
+
+  // 주간 회고
+  if (weeklyReflection) {
+    md += `## 📆 이번 주 회고\n\n`;
+    if (weeklyReflection.keep) md += `**Keep**: ${weeklyReflection.keep}\n\n`;
+    if (weeklyReflection.problem) md += `**Problem**: ${weeklyReflection.problem}\n\n`;
+    if (weeklyReflection.try) md += `**Try**: ${weeklyReflection.try}\n\n`;
+
+    if (weeklyReflection.routineEvals && weeklyReflection.routineEvals.length > 0) {
+      md += `### ⭐ 루틴별 평가\n\n`;
+      const evalEmoji = { good: '👍', soso: '👌', bad: '👎' };
+      weeklyReflection.routineEvals.forEach((ev) => {
+        const routine = activeRoutines.find((r) => r.id === ev.routineId);
+        const routineName = routine?.name || '삭제된 루틴';
+        const iconPrefix = routine?.icon && !routine.icon.startsWith('lucide:') ? `${routine.icon} ` : '';
+        const emoji = evalEmoji[ev.evaluation] || '';
+        md += `- ${emoji} ${iconPrefix}${routineName}: **${ev.evaluation.toUpperCase()}**`;
+        if (ev.improvement) md += `\n  > ${ev.improvement}`;
+        md += '\n';
+      });
+      md += '\n';
+    }
+  }
+
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${date}.md`;
   a.click();
   URL.revokeObjectURL(url);
 };
