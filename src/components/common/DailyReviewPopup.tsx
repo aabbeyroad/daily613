@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { BookOpen } from 'lucide-react';
+import { X, BookOpen } from 'lucide-react';
 import { subDays } from 'date-fns';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, formatDisplayDate } from '../../utils/date';
-import { Button, Modal, Notice } from '../ui/primitives';
 
 const STORAGE_KEY = 'lastReviewPopupDate';
 
@@ -31,23 +30,25 @@ export default function DailyReviewPopup() {
   if (!visible || !yesterdayReflection) return null;
 
   return (
-    <Modal
-      open={true}
-      title="어제의 회고"
-      description={yesterdayReflection.displayDate}
-      onClose={handleClose}
-      size="sm"
-      footer={<Button onClick={handleClose} variant="primary" size="lg" fullWidth>확인</Button>}
-    >
-      <div className="mb-4 flex items-center gap-2 text-[13px] font-semibold" style={{ color: 'var(--ds-accent)' }}>
-        <BookOpen size={16} />
-        어제 남긴 생각을 오늘 다시 확인합니다
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[90] px-4" onClick={handleClose}>
+      <div className="bg-surface rounded-2xl p-5 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <BookOpen size={18} className="text-primary-600" />
+            <h2 className="font-bold text-[15px] text-text-primary">어제의 회고</h2>
+          </div>
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-surface-secondary transition-colors">
+            <X size={16} className="text-text-tertiary" />
+          </button>
+        </div>
+        <p className="text-[12px] text-text-tertiary mb-3">{yesterdayReflection.displayDate}</p>
+        <div className="space-y-2.5">
+          {yesterdayReflection.keep && (<div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/20"><div className="text-[10px] font-bold text-done mb-1 uppercase tracking-wide">Keep</div><p className="text-[13px] text-text-primary whitespace-pre-wrap leading-relaxed">{yesterdayReflection.keep}</p></div>)}
+          {yesterdayReflection.problem && (<div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20"><div className="text-[10px] font-bold text-red-500 mb-1 uppercase tracking-wide">Problem</div><p className="text-[13px] text-text-primary whitespace-pre-wrap leading-relaxed">{yesterdayReflection.problem}</p></div>)}
+          {yesterdayReflection.try && (<div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20"><div className="text-[10px] font-bold text-more mb-1 uppercase tracking-wide">Try</div><p className="text-[13px] text-text-primary whitespace-pre-wrap leading-relaxed">{yesterdayReflection.try}</p></div>)}
+        </div>
+        <button onClick={handleClose} className="w-full mt-4 py-2.5 rounded-xl bg-primary-600 text-white text-[13px] font-semibold active:scale-[0.98] transition-all">확인</button>
       </div>
-      <div className="space-y-2.5">
-        {yesterdayReflection.keep && <Notice tone="success"><strong className="mr-1">Keep</strong>{yesterdayReflection.keep}</Notice>}
-        {yesterdayReflection.problem && <Notice tone="danger"><strong className="mr-1">Problem</strong>{yesterdayReflection.problem}</Notice>}
-        {yesterdayReflection.try && <Notice><strong className="mr-1">Try</strong>{yesterdayReflection.try}</Notice>}
-      </div>
-    </Modal>
+    </div>
   );
 }
