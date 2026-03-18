@@ -15,18 +15,20 @@ export default function TabBar() {
   const setActiveTab = useRoutineStore((s) => s.setActiveTab);
 
   return (
-    <nav className="bottom-nav safe-bottom" aria-label="메인 탭 네비게이션">
-      <div className="bottom-nav__grid">
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface/80 backdrop-blur-xl border-t border-border/50 safe-bottom" aria-label="메인 탭 네비게이션">
+      <div className="max-w-lg mx-auto flex">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
             aria-label={`${label} 탭`}
             aria-current={activeTab === id ? 'page' : undefined}
-            className={`bottom-nav__button ${activeTab === id ? 'bottom-nav__button--active' : ''}`}
+            className={`flex-1 flex flex-col items-center py-2 pt-2.5 min-h-[50px] transition-colors ${
+              activeTab === id ? 'text-primary-600' : 'text-text-tertiary'
+            }`}
           >
             <Icon size={22} strokeWidth={activeTab === id ? 2.5 : 1.8} />
-            <span className="bottom-nav__label">{label}</span>
+            <span className={`text-[10px] mt-0.5 ${activeTab === id ? 'font-bold' : 'font-medium'}`}>{label}</span>
           </button>
         ))}
       </div>
