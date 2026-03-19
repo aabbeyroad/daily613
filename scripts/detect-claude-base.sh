@@ -26,7 +26,7 @@ latest_commit=$(/usr/bin/git rev-parse --short "${latest_claude_ref}")
 latest_subject=$(/usr/bin/git log -1 --format=%s "${latest_claude_ref}")
 latest_date=$(/usr/bin/git log -1 --format=%ci "${latest_claude_ref}")
 
-echo "Recommended Claude base: ${latest_claude_ref}"
+echo "Latest Claude branch: ${latest_claude_ref}"
 echo "Latest commit: ${latest_commit} ${latest_subject}"
 echo "Commit date: ${latest_date}"
 
@@ -36,12 +36,29 @@ else
   echo "Current branch: detached HEAD"
 fi
 
-if [ -n "${current_branch}" ] && /usr/bin/git merge-base --is-ancestor "${latest_claude_ref}" HEAD; then
-  echo "Status: current HEAD already includes the latest Claude branch."
-  exit 0
+# Check if the latest Claude branch is already merged into origin/main
+if /usr/bin/git merge-base --is-ancestor "${latest_claude_ref}" "origin/main" 2>/dev/null; then
+  echo ""
+  echo "Status: Latest Claude branch is already merged into origin/main."
+  echo "Recommended base: origin/main (contains all merged work)"
+  echo ""
+  echo "Suggested start:"
+  echo "  git fetch origin"
+  echo "  git checkout -b codex/<task-name> origin/main"
+else
+  echo ""
+  echo "Status: Latest Claude branch has NOT been merged into origin/main yet."
+  echo "Recommended base: ${latest_claude_ref}"
+  echo ""
+  echo "Suggested start:"
+  echo "  git fetch origin"
+  echo "  git checkout -b codex/<task-name> ${latest_claude_ref}"
 fi
 
-echo "Status: current HEAD does not include the latest Claude branch."
-echo "Suggested start:"
-echo "  git fetch origin"
-echo "  git checkout -b codex/<task-name> ${latest_claude_ref}"
+# Warn if current HEAD does not include the latest Claude branch
+if [ -n "${current_branch}" ] && ! /usr/bin/git merge-base --is-ancestor "${latest_claude_ref}" HEAD 2>/dev/null; then
+  echo ""
+  echo "WARNING: Your current HEAD does not include the latest Claude branch."
+  echo "If you branched from an old point, your PR may overwrite recent UI changes."
+  echo "Consider rebasing: git rebase origin/main"
+fi

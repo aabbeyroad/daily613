@@ -22,7 +22,9 @@ Recommended flow:
 ```bash
 git fetch origin
 /bin/sh ./scripts/detect-claude-base.sh
-git checkout -b codex/<task-name> origin/claude/<latest-branch>
+# Follow the script's recommendation:
+#   - If Claude branch is already merged into main → use origin/main
+#   - If Claude branch is not yet merged → use origin/claude/<latest-branch>
 ```
 
 This keeps the rule simple:
@@ -30,3 +32,5 @@ This keeps the rule simple:
 - Claude branch = source app
 - Codex branch = retouch layer on top of Claude's latest work
 - `main` = integration point only after review
+
+**Important**: Always branch from `origin/main` after a fetch, never from a stale local branch. See `CLAUDE.md` for the full checklist.
