@@ -6,6 +6,7 @@ import { formatDate, getWeekDays, startOfMonth, endOfMonth } from '../../utils/d
 import KeywordFilter from '../common/KeywordFilter';
 import Calendar from './Calendar';
 import WeeklyRoutineGrid from './WeeklyRoutineGrid';
+import { Badge, MetricCard, Screen, ScreenHeader, SectionCard } from '../ui/primitives';
 
 const LEVEL_COLORS = { none: '#94a3b8', done: '#22c55e', more: '#3b82f6', max: '#a855f7' };
 
@@ -83,92 +84,75 @@ export default function StatsTab() {
   ];
 
   return (
-    <div className="px-4 pt-5 pb-4">
-      {/* 키워드 필터 */}
-      <div className="mb-5">
+    <Screen>
+      <ScreenHeader
+        eyebrow="Insights"
+        title="기록에서 패턴 읽기"
+        description="성과를 과장하지 않고, 지금의 흐름과 누적된 리듬을 담백하게 보여줍니다."
+        trailing={selectedKeyword ? <Badge tone="accent">{selectedKeyword}</Badge> : null}
+      />
+
+      <SectionCard title="필터" subtitle="특정 키워드에 초점을 맞춰 통계를 볼 수 있습니다.">
         <KeywordFilter />
-      </div>
+      </SectionCard>
 
-      {selectedKeyword && (
-        <div className="mb-4 px-3 py-2 rounded-xl bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-[13px] font-medium">
-          '{selectedKeyword}' 키워드 통계
-        </div>
-      )}
-
-      {/* 통계 카드 - 아이콘 우측에 수치 배치 */}
-      <div className="grid grid-cols-2 gap-2.5 mb-5">
-        {statCards.map(({ icon: Icon, label, value, color, bgColor }) => (
-          <div key={label} className="p-3 rounded-2xl bg-surface-secondary border border-border flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl ${bgColor} flex items-center justify-center flex-shrink-0`}>
-              <Icon size={19} className={color} />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[20px] font-bold text-text-primary leading-tight">{value}</div>
-              <div className="text-[11px] text-text-tertiary font-medium">{label}</div>
-            </div>
-          </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {statCards.map(({ icon: Icon, label, value }, index) => (
+          <MetricCard
+            key={label}
+            label={label}
+            value={value}
+            icon={<Icon size={18} />}
+            tone={index === 0 ? 'warning' : index === 1 ? 'success' : index === 2 ? 'accent' : 'default'}
+          />
         ))}
       </div>
 
-      {/* 이번 주 점수 - 좌측 아이콘 추가 */}
-      <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center flex-shrink-0">
-              <Zap size={19} className="text-yellow-500" />
-            </div>
-            <div>
-              <div className="text-[11px] text-text-tertiary font-medium uppercase tracking-wide">이번 주 점수</div>
-              <div className="text-2xl font-bold text-text-primary leading-tight mt-0.5">{weeklyScore}<span className="text-sm text-text-tertiary font-normal ml-1">pts</span></div>
-            </div>
-          </div>
-          <div className="text-right space-y-0.5">
-            <div className="text-[10px] text-done font-medium">Done = 1pt</div>
-            <div className="text-[10px] text-more font-medium">More = 2pt</div>
-            <div className="text-[10px] text-max font-medium">Max = 3pt</div>
-          </div>
+      <SectionCard
+        title="이번 주 점수"
+        subtitle="Done, More, Max의 가중치를 반영한 주간 종합 점수입니다."
+        action={<Badge tone="warning"><Zap size={12} />{weeklyScore} pts</Badge>}
+      >
+        <div className="grid gap-2 sm:grid-cols-3">
+          <div className="notice notice--success">Done = 1pt</div>
+          <div className="notice" style={{ background: 'var(--ds-bg-accent)', color: 'var(--ds-accent)' }}>More = 2pt</div>
+          <div className="notice" style={{ background: 'rgba(109, 91, 208, 0.14)', color: 'var(--color-max)' }}>Max = 3pt</div>
         </div>
-      </div>
+      </SectionCard>
 
-      {/* 이번 주 루틴별 현황 */}
-      <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
-        <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">이번 주 루틴 현황</h3>
+      <SectionCard title="이번 주 루틴 현황" subtitle="요일과 루틴별 이행 흐름을 한 번에 비교합니다.">
         <WeeklyRoutineGrid />
-      </div>
+      </SectionCard>
 
-      {/* 달성 단계 비율 */}
-      {levelDistribution.length > 0 && (
-        <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
-          <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">달성 단계 비율</h3>
-          <div className="flex items-center">
-            <div className="w-28 h-28">
+      {levelDistribution.length > 0 ? (
+        <SectionCard title="달성 단계 비율" subtitle="루틴 체크가 어떤 수준에서 가장 많이 쌓였는지 보여줍니다.">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="h-32 w-32">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={levelDistribution} cx="50%" cy="50%" innerRadius={28} outerRadius={50} dataKey="value" strokeWidth={2} stroke="var(--color-surface-secondary)">
+                  <Pie data={levelDistribution} cx="50%" cy="50%" innerRadius={34} outerRadius={54} dataKey="value" strokeWidth={2} stroke="var(--ds-bg-elevated)">
                     {levelDistribution.map((entry, index) => (<Cell key={index} fill={entry.color} />))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value}회`, '']} contentStyle={{ borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontSize: '12px' }} />
+                  <Tooltip formatter={(value) => [`${value}회`, '']} contentStyle={{ borderRadius: '18px', border: '1px solid var(--ds-border)', background: 'var(--ds-bg-elevated)', fontSize: '12px' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex-1 ml-4 space-y-2.5">
+            <div className="flex-1 space-y-3">
               {levelDistribution.map((item) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
-                  <span className="text-[13px] text-text-secondary flex-1">{item.name}</span>
-                  <span className="text-[13px] font-semibold text-text-primary">{item.value}회</span>
+                <div key={item.name} className="flex items-center gap-3">
+                  <div className="h-3 w-3 rounded-full" style={{ background: item.color }} />
+                  <span className="flex-1 text-[14px]" style={{ color: 'var(--ds-text-secondary)' }}>{item.name}</span>
+                  <span className="text-[14px] font-semibold" style={{ color: 'var(--ds-text-primary)' }}>{item.value}회</span>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      )}
+        </SectionCard>
+      ) : null}
 
-      {/* 월간 캘린더 */}
-      <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
-        <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">월간 캘린더</h3>
+      <SectionCard title="월간 캘린더" subtitle="월간 이행 흐름과 해당 날짜의 기록을 자세히 확인합니다.">
         <Calendar />
-      </div>
-    </div>
+      </SectionCard>
+    </Screen>
   );
 }

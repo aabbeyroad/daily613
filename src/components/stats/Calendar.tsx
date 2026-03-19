@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameMonth, isToday } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate } from '../../utils/date';
+import { Badge, IconButton, Modal, Notice } from '../ui/primitives';
 
 export default function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -30,40 +31,50 @@ export default function Calendar() {
     return Math.round((completed / filteredRoutines.length) * 100);
   };
 
-  const getRateColor = (rate: number): string => {
-    if (rate === 0) return 'bg-surface-tertiary';
-    if (rate < 30) return 'bg-red-200 dark:bg-red-900';
-    if (rate < 60) return 'bg-yellow-200 dark:bg-yellow-900';
-    if (rate < 100) return 'bg-green-200 dark:bg-green-900';
-    return 'bg-green-500';
-  };
-
   const selectedReflection = selectedDate ? reflections.find((r) => r.date === selectedDate && r.type === 'daily') : null;
   const selectedRecord = selectedDate ? records.find((r) => r.date === selectedDate) : null;
 
+  const getRateStyle = (rate: number) => {
+    if (rate === 0) return { background: 'var(--ds-bg-secondary)', color: 'var(--ds-text-tertiary)' };
+    if (rate < 30) return { background: 'rgba(201, 72, 92, 0.14)', color: 'var(--ds-danger)' };
+    if (rate < 60) return { background: 'rgba(255, 184, 0, 0.16)', color: 'var(--ds-warning)' };
+    if (rate < 100) return { background: 'rgba(52, 168, 83, 0.14)', color: 'var(--ds-success)' };
+    return { background: 'var(--color-done)', color: '#fff' };
+  };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} aria-label="이전 달" className="p-2.5"><ChevronLeft size={20} /></button>
-        <span className="font-medium">{format(currentMonth, 'yyyy년 M월', { locale: ko })}</span>
-        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} aria-label="다음 달" className="p-2.5"><ChevronRight size={20} /></button>
+      <div className="mb-4 flex items-center justify-between">
+        <IconButton onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} aria-label="이전 달">
+          <ChevronLeft size={18} />
+        </IconButton>
+        <span className="text-[15px] font-semibold" style={{ color: 'var(--ds-text-primary)' }}>{format(currentMonth, 'yyyy년 M월', { locale: ko })}</span>
+        <IconButton onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} aria-label="다음 달">
+          <ChevronRight size={18} />
+        </IconButton>
       </div>
-      <div className="grid grid-cols-7 gap-1 mb-2">
+      <div className="mb-2 grid grid-cols-7 gap-2">
         {['월', '화', '수', '목', '금', '토', '일'].map((d) => (
-          <div key={d} className="text-center text-xs text-text-tertiary py-1">{d}</div>
+          <div key={d} className="py-1 text-center text-xs" style={{ color: 'var(--ds-text-tertiary)' }}>{d}</div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-2">
         {Array.from({ length: adjustedStartDay }).map((_, i) => (<div key={`empty-${i}`} />))}
         {days.map((day) => {
           const rate = getDayRate(day);
           const dateStr = formatDate(day);
+          const style = getRateStyle(rate);
           return (
             <button
               key={dateStr}
               onClick={() => setSelectedDate(dateStr)}
               aria-label={`${format(day, 'M월 d일', { locale: ko })} 달성률 ${rate}%`}
-              className={`aspect-square rounded-lg flex items-center justify-center text-xs font-medium transition-all ${getRateColor(rate)} ${isToday(day) ? 'ring-2 ring-primary-500' : ''} ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}`}
+              className="aspect-square rounded-[16px] text-xs font-semibold transition-all"
+              style={{
+                ...style,
+                opacity: isSameMonth(day, currentMonth) ? 1 : 0.3,
+                boxShadow: isToday(day) ? '0 0 0 2px rgba(54, 90, 168, 0.22)' : 'none',
+              }}
             >
               {format(day, 'd')}
             </button>
@@ -71,26 +82,21 @@ export default function Calendar() {
         })}
       </div>
       {selectedDate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-labelledby="cal-detail-title" onClick={() => setSelectedDate(null)}>
-          <div className="bg-surface rounded-2xl p-5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 id="cal-detail-title" className="font-bold text-lg">{selectedDate}</h3>
-              <button onClick={() => setSelectedDate(null)} aria-label="닫기" className="p-2.5"><X size={20} /></button>
-            </div>
+        <Modal open={true} title={selectedDate} description="선택한 날짜의 루틴과 회고를 함께 확인합니다." onClose={() => setSelectedDate(null)} size="sm">
             {selectedKeyword && (
-              <div className="mb-3 text-xs text-primary-600 dark:text-primary-400">
-                {selectedKeyword} 필터 적용 중
+              <div className="mb-3">
+                <Badge tone="accent">{selectedKeyword} 필터 적용 중</Badge>
               </div>
             )}
             {selectedRecord && (
               <div className="mb-4">
-                <div className="text-sm text-text-secondary mb-2">루틴 달성</div>
+                <div className="mb-2 text-sm" style={{ color: 'var(--ds-text-secondary)' }}>루틴 달성</div>
                 <div className="space-y-1">
                   {filteredRoutines.map((r) => {
                     const level = selectedRecord.checks[r.id] || 'none';
                     return (
                       <div key={r.id} className="flex items-center justify-between text-sm">
-                        <span>{r.name}</span>
+                        <span style={{ color: 'var(--ds-text-primary)' }}>{r.name}</span>
                         <span className={level === 'max' ? 'text-max' : level === 'more' ? 'text-more' : level === 'done' ? 'text-done' : 'text-text-tertiary'}>
                           {level === 'none' ? '-' : level.toUpperCase()}
                         </span>
@@ -102,16 +108,15 @@ export default function Calendar() {
             )}
             {selectedReflection ? (
               <div>
-                <div className="text-sm text-text-secondary mb-2">회고</div>
-                {selectedReflection.keep && <p className="text-sm mb-1"><span className="text-done font-bold">K:</span> {selectedReflection.keep}</p>}
-                {selectedReflection.problem && <p className="text-sm mb-1"><span className="text-red-500 font-bold">P:</span> {selectedReflection.problem}</p>}
-                {selectedReflection.try && <p className="text-sm"><span className="text-more font-bold">T:</span> {selectedReflection.try}</p>}
+                <div className="mb-2 text-sm" style={{ color: 'var(--ds-text-secondary)' }}>회고</div>
+                {selectedReflection.keep && <Notice tone="success" className="mb-2"><strong className="mr-1">K:</strong>{selectedReflection.keep}</Notice>}
+                {selectedReflection.problem && <Notice tone="danger" className="mb-2"><strong className="mr-1">P:</strong>{selectedReflection.problem}</Notice>}
+                {selectedReflection.try && <Notice><strong className="mr-1">T:</strong>{selectedReflection.try}</Notice>}
               </div>
             ) : (
-              <p className="text-sm text-text-tertiary">작성된 회고가 없습니다.</p>
+              <p className="text-sm" style={{ color: 'var(--ds-text-tertiary)' }}>작성된 회고가 없습니다.</p>
             )}
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

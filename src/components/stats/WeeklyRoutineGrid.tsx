@@ -3,12 +3,13 @@ import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, getWeekDays } from '../../utils/date';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { Badge } from '../ui/primitives';
 
 const levelColors = {
-  none: 'bg-surface-tertiary',
-  done: 'bg-done',
-  more: 'bg-more',
-  max: 'bg-max',
+  none: 'var(--ds-bg-tertiary)',
+  done: 'var(--color-done)',
+  more: 'var(--color-more)',
+  max: 'var(--color-max)',
 };
 
 export default function WeeklyRoutineGrid() {
@@ -72,120 +73,71 @@ export default function WeeklyRoutineGrid() {
 
   if (filteredRoutines.length === 0) {
     return (
-      <div className="text-center py-6 text-text-tertiary text-sm">
+      <div className="py-6 text-center text-sm" style={{ color: 'var(--ds-text-tertiary)' }}>
         등록된 루틴이 없습니다
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto -mx-4 px-4">
-      <div className="min-w-[320px]">
-        {/* 요일 헤더 */}
-        <div className="flex mb-2">
-          <div className="w-24 flex-shrink-0" />
-          <div className="flex flex-1 gap-1">
-            {weekDays.map((day) => (
-              <div
-                key={day.toISOString()}
-                className={`flex-1 text-center text-xs font-medium py-1 ${
-                  isToday(day) ? 'text-primary-600' : 'text-text-tertiary'
-                }`}
-              >
-                <div>{format(day, 'EEE', { locale: ko })}</div>
-                <div className={`text-[10px] ${isToday(day) ? 'font-bold' : ''}`}>
-                  {format(day, 'd')}
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* 이행률 열 헤더 */}
-          <div className="w-10 flex-shrink-0 flex items-center justify-center">
-            <span className="text-[10px] text-text-tertiary font-medium">달성</span>
-          </div>
-        </div>
-
-        {/* 루틴별 행 */}
-        <div className="space-y-1.5">
-          {filteredRoutines.map((routine) => (
-            <div key={routine.id} className="flex items-center">
-              <div className="w-24 flex-shrink-0 pr-2">
-                <span className="text-xs font-medium text-text-primary truncate block">
-                  {routine.name}
-                </span>
-              </div>
-              <div className="flex flex-1 gap-1">
+    <div>
+      <div className="data-grid">
+        <table className="data-grid__table">
+          <thead>
+            <tr>
+              <th>루틴</th>
+              {weekDays.map((day) => (
+                <th key={day.toISOString()}>
+                  <div className="text-center">
+                    <div>{format(day, 'EEE', { locale: ko })}</div>
+                    <div className="mt-1 text-[10px]" style={{ color: isToday(day) ? 'var(--ds-accent)' : 'var(--ds-text-tertiary)' }}>{format(day, 'd')}</div>
+                  </div>
+                </th>
+              ))}
+              <th>달성</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRoutines.map((routine) => (
+              <tr key={routine.id}>
+                <td style={{ color: 'var(--ds-text-primary)', fontWeight: 600 }}>{routine.name}</td>
                 {weekDays.map((day) => {
-                  const level = getLevel(routine.id, day);
+                  const level = getLevel(routine.id, day) as keyof typeof levelColors;
                   return (
-                    <div
-                      key={day.toISOString()}
-                      className={`flex-1 h-[22px] rounded-md ${levelColors[level as keyof typeof levelColors]} ${
-                        isToday(day) ? 'ring-2 ring-primary-500 ring-offset-1' : ''
-                      } transition-all`}
-                      title={`${routine.name} - ${format(day, 'M/d')} - ${level === 'none' ? '미완료' : level.toUpperCase()}`}
-                    />
+                    <td key={day.toISOString()}>
+                      <div
+                        className="mx-auto h-[22px] w-[22px] rounded-[8px]"
+                        style={{
+                          background: levelColors[level],
+                          boxShadow: isToday(day) ? '0 0 0 2px rgba(54, 90, 168, 0.22)' : 'none',
+                        }}
+                        title={`${routine.name} - ${format(day, 'M/d')} - ${level === 'none' ? '미완료' : level.toUpperCase()}`}
+                      />
+                    </td>
                   );
                 })}
-              </div>
-              {/* 루틴별 이행률 */}
-              <div className="w-10 flex-shrink-0 flex items-center justify-center">
-                <span className={`text-[10px] font-bold ${
-                  (routineRates[routine.id] ?? 0) >= 80 ? 'text-done' :
-                  (routineRates[routine.id] ?? 0) >= 50 ? 'text-more' :
-                  'text-text-tertiary'
-                }`}>
-                  {routineRates[routine.id] ?? 0}%
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* 날짜별 전체 이행률 행 */}
-        <div className="flex items-center mt-2 pt-2 border-t border-border">
-          <div className="w-24 flex-shrink-0 pr-2">
-            <span className="text-[10px] font-medium text-text-tertiary">전체 이행률</span>
-          </div>
-          <div className="flex flex-1 gap-1">
-            {dailyRates.map((rate, i) => (
-              <div key={weekDays[i].toISOString()} className="flex-1 text-center">
-                {rate !== null ? (
-                  <span className={`text-[10px] font-bold ${
-                    rate >= 80 ? 'text-done' :
-                    rate >= 50 ? 'text-more' :
-                    'text-text-tertiary'
-                  }`}>
-                    {rate}%
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-text-tertiary">-</span>
-                )}
-              </div>
+                <td style={{ color: 'var(--ds-text-primary)', fontWeight: 700 }}>{routineRates[routine.id] ?? 0}%</td>
+              </tr>
             ))}
-          </div>
-          <div className="w-10 flex-shrink-0" />
-        </div>
-
-        {/* 범례 */}
-        <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-border">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-surface-tertiary" />
-            <span className="text-[10px] text-text-tertiary">미완료</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-done" />
-            <span className="text-[10px] text-text-tertiary">Done</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-more" />
-            <span className="text-[10px] text-text-tertiary">More</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-max" />
-            <span className="text-[10px] text-text-tertiary">Max</span>
-          </div>
-        </div>
+            <tr>
+              <td style={{ color: 'var(--ds-text-secondary)', fontWeight: 600 }}>전체 이행률</td>
+              {dailyRates.map((rate, i) => (
+                <td key={weekDays[i].toISOString()}>
+                  <div className="text-center text-[10px]" style={{ color: rate === null ? 'var(--ds-text-tertiary)' : 'var(--ds-text-primary)', fontWeight: rate === null ? 500 : 700 }}>
+                    {rate !== null ? `${rate}%` : '-'}
+                  </div>
+                </td>
+              ))}
+              <td />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Badge tone="default">미완료</Badge>
+        <Badge tone="success">Done</Badge>
+        <Badge tone="accent">More</Badge>
+        <span className="badge" style={{ background: 'rgba(109, 91, 208, 0.14)', color: 'var(--color-max)' }}>Max</span>
       </div>
     </div>
   );

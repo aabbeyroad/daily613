@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { X, ChevronDown, ChevronUp, ThumbsUp, Minus, ThumbsDown } from 'lucide-react';
+import { ChevronDown, ChevronUp, ThumbsUp, Minus, ThumbsDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, getWeekDays } from '../../utils/date';
 import { IconDisplay } from '../settings/RoutineForm';
 import type { Reflection, RoutineEvaluation, RoutineEval, CheckLevel } from '../../types';
+import { Badge, Button, Modal, Notice, SectionCard, TextArea } from '../ui/primitives';
 
 interface Props {
   date: string;
@@ -18,17 +19,17 @@ function DailySummaryBlock({ items, color }: { items: { date: string; text: stri
   const [open, setOpen] = useState(true);
   if (items.length === 0) return null;
   return (
-    <div className="mb-1.5 p-2 rounded-lg bg-surface-tertiary/50 border border-border/50">
-      <button onClick={() => setOpen(!open)} className="flex items-center justify-between w-full text-left">
-        <span className={`text-[10px] font-semibold ${color}`}>이번 주 일간 회고 ({items.length}건)</span>
-        {open ? <ChevronUp size={12} className="text-text-tertiary" /> : <ChevronDown size={12} className="text-text-tertiary" />}
+    <div className="mb-2 rounded-[18px] border p-3" style={{ background: 'var(--ds-bg-secondary)', borderColor: 'var(--ds-border)' }}>
+      <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between text-left">
+        <span className="text-[10px] font-semibold" style={{ color }}>{`이번 주 일간 회고 (${items.length}건)`}</span>
+        {open ? <ChevronUp size={12} style={{ color: 'var(--ds-text-tertiary)' }} /> : <ChevronDown size={12} style={{ color: 'var(--ds-text-tertiary)' }} />}
       </button>
       {open && (
-        <div className="mt-1.5 space-y-0.5">
+        <div className="mt-2 space-y-1">
           {items.map((item, i) => (
             <div key={i} className="flex gap-1.5 text-[11px]">
-              <span className="text-text-tertiary shrink-0">{item.date}</span>
-              <p className="text-text-secondary whitespace-pre-wrap line-clamp-2">{item.text}</p>
+              <span className="shrink-0" style={{ color: 'var(--ds-text-tertiary)' }}>{item.date}</span>
+              <p className="line-clamp-2 whitespace-pre-wrap" style={{ color: 'var(--ds-text-secondary)' }}>{item.text}</p>
             </div>
           ))}
         </div>
@@ -38,16 +39,16 @@ function DailySummaryBlock({ items, color }: { items: { date: string; text: stri
 }
 
 const LEVEL_COLORS: Record<string, string> = {
-  none: 'bg-surface-tertiary',
-  done: 'bg-done',
-  more: 'bg-more',
-  max: 'bg-max',
+  none: 'var(--ds-bg-tertiary)',
+  done: 'var(--color-done)',
+  more: 'var(--color-more)',
+  max: 'var(--color-max)',
 };
 
 const EVAL_CONFIG: { key: RoutineEvaluation; label: string; icon: typeof ThumbsUp; color: string; bgColor: string; activeBg: string }[] = [
-  { key: 'good', label: 'Good', icon: ThumbsUp, color: 'text-done', bgColor: 'bg-green-50 dark:bg-green-900/10', activeBg: 'bg-green-100 dark:bg-green-900/30 ring-2 ring-done' },
-  { key: 'soso', label: 'Soso', icon: Minus, color: 'text-amber-500', bgColor: 'bg-amber-50 dark:bg-amber-900/10', activeBg: 'bg-amber-100 dark:bg-amber-900/30 ring-2 ring-amber-500' },
-  { key: 'bad', label: 'Bad', icon: ThumbsDown, color: 'text-red-500', bgColor: 'bg-red-50 dark:bg-red-900/10', activeBg: 'bg-red-100 dark:bg-red-900/30 ring-2 ring-red-500' },
+  { key: 'good', label: 'Good', icon: ThumbsUp, color: 'var(--color-done)', bgColor: 'rgba(52, 168, 83, 0.1)', activeBg: 'rgba(52, 168, 83, 0.16)' },
+  { key: 'soso', label: 'Soso', icon: Minus, color: '#b78317', bgColor: 'rgba(255, 184, 0, 0.12)', activeBg: 'rgba(255, 184, 0, 0.18)' },
+  { key: 'bad', label: 'Bad', icon: ThumbsDown, color: 'var(--ds-danger)', bgColor: 'rgba(201, 72, 92, 0.1)', activeBg: 'rgba(201, 72, 92, 0.16)' },
 ];
 
 export default function ReflectionForm({ date, type, existing, onClose }: Props) {
@@ -197,181 +198,139 @@ export default function ReflectionForm({ date, type, existing, onClose }: Props)
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50" role="dialog" aria-labelledby="reflection-form-title" onClick={onClose}>
-      <div className="bg-surface rounded-t-3xl sm:rounded-2xl p-5 w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 id="reflection-form-title" className="text-lg font-bold">{existing ? '회고 수정' : '회고 작성'}</h2>
-          <button onClick={onClose} aria-label="닫기" className="p-2.5 rounded-xl hover:bg-surface-secondary transition-colors"><X size={20} /></button>
-        </div>
+    <Modal
+      open={true}
+      title={existing ? '회고 수정' : '회고 작성'}
+      description={type === 'weekly' ? '이번 주의 흐름과 다음 주의 시도를 함께 정리합니다.' : '하루를 Keep, Problem, Try 구조로 간결하게 남깁니다.'}
+      onClose={onClose}
+      size="lg"
+      footer={
+        <>
+          <Button variant="secondary" size="lg" fullWidth onClick={onClose}>취소</Button>
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit}>{existing ? '수정하기' : '저장하기'}</Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <SectionCard title="Keep" subtitle="잘한 것과 앞으로도 유지하고 싶은 흐름을 적습니다.">
+          {weeklyDailyKPT ? <DailySummaryBlock items={weeklyDailyKPT.keeps} color="var(--color-done)" /> : null}
+          <TextArea value={keep} onChange={(e) => setKeep(e.target.value)} placeholder={type === 'weekly' ? '이번 주 잘한 것, 계속할 것...' : '오늘 잘한 것...'} rows={4} />
+        </SectionCard>
 
-        <div className="space-y-4">
-          {/* Keep */}
-          <div>
-            {weeklyDailyKPT && <DailySummaryBlock items={weeklyDailyKPT.keeps} color="text-done" />}
-            <label className="block text-sm font-bold text-done mb-1">Keep - 잘한 것</label>
-            <textarea value={keep} onChange={(e) => setKeep(e.target.value)} placeholder={type === 'weekly' ? '이번 주 잘한 것, 계속할 것...' : '오늘 잘한 것...'} rows={3} className="w-full px-3 py-2 rounded-lg border border-border bg-surface-secondary text-text-primary text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500" />
-          </div>
-          {/* Problem */}
-          <div>
-            {weeklyDailyKPT && <DailySummaryBlock items={weeklyDailyKPT.problems} color="text-red-500" />}
-            <label className="block text-sm font-bold text-red-500 mb-1">Problem - 아쉬운 점</label>
-            <textarea value={problem} onChange={(e) => setProblem(e.target.value)} placeholder={type === 'weekly' ? '아쉬웠던 점, 문제점...' : '아쉬웠던 점...'} rows={3} className="w-full px-3 py-2 rounded-lg border border-border bg-surface-secondary text-text-primary text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500" />
-          </div>
-          {/* Try */}
-          <div>
-            {weeklyDailyKPT && <DailySummaryBlock items={weeklyDailyKPT.tries} color="text-more" />}
-            <label className="block text-sm font-bold text-more mb-1">Try - 시도할 것</label>
-            <textarea value={tryText} onChange={(e) => setTryText(e.target.value)} placeholder={type === 'weekly' ? '다음 주에 시도해볼 것...' : '다음에 시도해볼 것...'} rows={3} className="w-full px-3 py-2 rounded-lg border border-border bg-surface-secondary text-text-primary text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500" />
-          </div>
-        </div>
+        <SectionCard title="Problem" subtitle="아쉬웠던 점이나 반복된 문제를 적습니다.">
+          {weeklyDailyKPT ? <DailySummaryBlock items={weeklyDailyKPT.problems} color="var(--ds-danger)" /> : null}
+          <TextArea value={problem} onChange={(e) => setProblem(e.target.value)} placeholder={type === 'weekly' ? '아쉬웠던 점, 문제점...' : '아쉬웠던 점...'} rows={4} />
+        </SectionCard>
 
-        {/* === 주간 전용 섹션 === */}
-        {type === 'weekly' && weeklyStats && weeklyStats.routineData.length > 0 && (
+        <SectionCard title="Try" subtitle="다음에 시도할 작은 변화나 실험을 적습니다.">
+          {weeklyDailyKPT ? <DailySummaryBlock items={weeklyDailyKPT.tries} color="var(--color-more)" /> : null}
+          <TextArea value={tryText} onChange={(e) => setTryText(e.target.value)} placeholder={type === 'weekly' ? '다음 주에 시도해볼 것...' : '다음에 시도해볼 것...'} rows={4} />
+        </SectionCard>
+
+        {type === 'weekly' && weeklyStats && weeklyStats.routineData.length > 0 ? (
           <>
-            {/* 이번 주 루틴 현황 */}
-            <div className="mt-6 pt-5 border-t border-border">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-[13px] text-text-secondary uppercase tracking-wide">이번 주 루틴 현황</h3>
-                <span className={`text-[13px] font-bold ${weeklyStats.totalRate >= 80 ? 'text-done' : weeklyStats.totalRate >= 50 ? 'text-more' : 'text-text-tertiary'}`}>
-                  평균 {weeklyStats.totalRate}%
-                </span>
-              </div>
-
-              <div className="rounded-xl bg-surface-secondary border border-border p-3 overflow-x-auto">
-                <div className="min-w-[280px]">
-                  {/* 요일 헤더 */}
-                  <div className="flex mb-2">
-                    <div className="w-20 flex-shrink-0" />
-                    <div className="flex flex-1 gap-0.5">
+            <SectionCard
+              title="이번 주 루틴 현황"
+              subtitle="요일별 체크 흐름과 평균 이행률을 동시에 확인합니다."
+              action={<Badge tone="accent">평균 {weeklyStats.totalRate}%</Badge>}
+            >
+              <div className="data-grid">
+                <table className="data-grid__table">
+                  <thead>
+                    <tr>
+                      <th>루틴</th>
                       {weeklyStats.weekDays.map((day) => (
-                        <div
-                          key={day.toISOString()}
-                          className={`flex-1 text-center text-[10px] font-medium ${formatDate(day) === weeklyStats.todayStr ? 'text-primary-600 font-bold' : 'text-text-tertiary'}`}
-                        >
-                          {format(day, 'EEE', { locale: ko })}
-                        </div>
+                        <th key={day.toISOString()}>{format(day, 'EEE', { locale: ko })}</th>
                       ))}
-                    </div>
-                    <div className="w-9 flex-shrink-0 text-center text-[9px] text-text-tertiary font-medium">달성</div>
-                  </div>
-
-                  {/* 루틴 행 */}
-                  <div className="space-y-1">
+                      <th>달성</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {weeklyStats.routineData.map(({ routine, levels, rate }) => (
-                      <div key={routine.id} className="flex items-center">
-                        <div className="w-20 flex-shrink-0 pr-1.5 flex items-center gap-1">
-                          {routine.icon && <IconDisplay icon={routine.icon} size={13} />}
-                          <span className="text-[11px] font-medium text-text-primary truncate">{routine.name}</span>
-                        </div>
-                        <div className="flex flex-1 gap-0.5">
-                          {levels.map((level, i) => (
+                      <tr key={routine.id}>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            {routine.icon ? <IconDisplay icon={routine.icon} size={15} /> : null}
+                            <span style={{ color: 'var(--ds-text-primary)', fontWeight: 600 }}>{routine.name}</span>
+                          </div>
+                        </td>
+                        {levels.map((level, i) => (
+                          <td key={i}>
                             <div
-                              key={i}
-                              className={`flex-1 h-5 rounded ${LEVEL_COLORS[level]} ${formatDate(weeklyStats.weekDays[i]) === weeklyStats.todayStr ? 'ring-1 ring-primary-500 ring-offset-1' : ''}`}
+                              className="mx-auto h-5 w-5 rounded-[8px]"
+                              style={{
+                                background: LEVEL_COLORS[level],
+                                boxShadow: formatDate(weeklyStats.weekDays[i]) === weeklyStats.todayStr ? '0 0 0 2px rgba(54, 90, 168, 0.22)' : 'none',
+                              }}
                             />
-                          ))}
-                        </div>
-                        <div className="w-9 flex-shrink-0 text-center">
-                          <span className={`text-[10px] font-bold ${rate >= 80 ? 'text-done' : rate >= 50 ? 'text-more' : 'text-text-tertiary'}`}>
-                            {rate}%
-                          </span>
-                        </div>
-                      </div>
+                          </td>
+                        ))}
+                        <td style={{ color: 'var(--ds-text-primary)', fontWeight: 700 }}>{rate}%</td>
+                      </tr>
                     ))}
-                  </div>
-
-                  {/* 날짜별 이행률 */}
-                  <div className="flex items-center mt-1.5 pt-1.5 border-t border-border/50">
-                    <div className="w-20 flex-shrink-0 text-[9px] text-text-tertiary">이행률</div>
-                    <div className="flex flex-1 gap-0.5">
-                      {weeklyStats.dailyRates.map((rate, i) => (
-                        <div key={i} className="flex-1 text-center">
-                          {rate !== null ? (
-                            <span className={`text-[9px] font-bold ${rate >= 80 ? 'text-done' : rate >= 50 ? 'text-more' : 'text-text-tertiary'}`}>{rate}%</span>
-                          ) : (
-                            <span className="text-[9px] text-text-tertiary">-</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="w-9 flex-shrink-0" />
-                  </div>
-
-                  {/* 범례 */}
-                  <div className="flex items-center justify-center gap-3 mt-2 pt-2 border-t border-border/50">
-                    {[
-                      { color: 'bg-surface-tertiary', label: '미완료' },
-                      { color: 'bg-done', label: 'Done' },
-                      { color: 'bg-more', label: 'More' },
-                      { color: 'bg-max', label: 'Max' },
-                    ].map(({ color, label }) => (
-                      <div key={label} className="flex items-center gap-1">
-                        <div className={`w-2 h-2 rounded ${color}`} />
-                        <span className="text-[9px] text-text-tertiary">{label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                  </tbody>
+                </table>
               </div>
-            </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Badge tone="default">미완료</Badge>
+                <Badge tone="success">Done</Badge>
+                <Badge tone="accent">More</Badge>
+                <Badge className="badge badge--default" >Max</Badge>
+              </div>
+            </SectionCard>
 
-            {/* 루틴별 평가 */}
-            <div className="mt-5">
-              <h3 className="font-semibold text-[13px] text-text-secondary uppercase tracking-wide mb-3">루틴별 평가</h3>
-              <div className="space-y-2.5">
+            <SectionCard title="루틴별 평가" subtitle="각 루틴에 대한 감정 평가와 개선 메모를 남깁니다.">
+              <div className="space-y-3">
                 {activeRoutines.map((routine) => {
                   const evalState = routineEvals[routine.id];
                   const rate = weeklyStats.routineData.find((r) => r.routine.id === routine.id)?.rate ?? 0;
                   return (
-                    <div key={routine.id} className="rounded-xl bg-surface-secondary border border-border p-3">
-                      {/* 루틴 헤더 */}
-                      <div className="flex items-center justify-between mb-2.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {routine.icon && <IconDisplay icon={routine.icon} size={16} />}
-                          <span className="font-medium text-[13px] text-text-primary truncate">{routine.name}</span>
+                    <div key={routine.id} className="card p-4">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          {routine.icon ? <IconDisplay icon={routine.icon} size={16} /> : null}
+                          <span className="truncate text-[14px] font-semibold" style={{ color: 'var(--ds-text-primary)' }}>{routine.name}</span>
                         </div>
-                        <span className={`text-[11px] font-bold flex-shrink-0 ${rate >= 80 ? 'text-done' : rate >= 50 ? 'text-more' : 'text-text-tertiary'}`}>
-                          {rate}%
-                        </span>
+                        <Badge tone={rate >= 80 ? 'success' : rate >= 50 ? 'accent' : 'default'}>{rate}%</Badge>
                       </div>
-
-                      {/* Good / Soso / Bad 버튼 */}
-                      <div className="flex gap-1.5 mb-2">
+                      <div className="mb-3 grid grid-cols-3 gap-2">
                         {EVAL_CONFIG.map(({ key, label, icon: Icon, color, bgColor, activeBg }) => (
                           <button
                             key={key}
                             type="button"
                             onClick={() => setEval(routine.id, key)}
-                            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[12px] font-semibold transition-all ${
-                              evalState?.evaluation === key ? `${activeBg} ${color}` : `${bgColor} text-text-tertiary hover:text-text-secondary`
-                            }`}
+                            className="rounded-[18px] border px-3 py-2 text-[12px] font-semibold transition-all"
+                            style={{
+                              color: evalState?.evaluation === key ? color : 'var(--ds-text-secondary)',
+                              background: evalState?.evaluation === key ? activeBg : bgColor,
+                              borderColor: evalState?.evaluation === key ? color : 'transparent',
+                            }}
                           >
-                            <Icon size={13} />
-                            {label}
+                            <span className="flex items-center justify-center gap-1">
+                              <Icon size={13} />
+                              {label}
+                            </span>
                           </button>
                         ))}
                       </div>
-
-                      {/* 개선방향 입력 */}
-                      {evalState?.evaluation && (
-                        <textarea
+                      {evalState?.evaluation ? (
+                        <TextArea
                           value={evalState.improvement}
                           onChange={(e) => setImprovement(routine.id, e.target.value)}
                           placeholder="개선 방향 또는 메모..."
-                          rows={2}
-                          className="w-full px-2.5 py-2 rounded-lg border border-border bg-surface text-text-primary text-[12px] resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder:text-text-tertiary"
+                          rows={3}
                         />
+                      ) : (
+                        <Notice>평가를 선택하면 개선 방향을 더 자세히 적을 수 있습니다.</Notice>
                       )}
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </SectionCard>
           </>
-        )}
-
-        <button onClick={handleSubmit} className="w-full mt-6 py-3 rounded-xl bg-primary-600 text-white font-semibold active:scale-[0.98] transition-all">{existing ? '수정하기' : '저장하기'}</button>
+        ) : null}
       </div>
-    </div>
+    </Modal>
   );
 }
