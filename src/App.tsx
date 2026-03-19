@@ -10,6 +10,7 @@ import TrackingTab from './components/tracking/TrackingTab';
 import SettingsTab from './components/settings/SettingsTab';
 import AuthPage from './components/auth/AuthPage';
 import DailyReviewPopup from './components/common/DailyReviewPopup';
+import { useNotificationScheduler } from './hooks/useNotificationScheduler';
 import { Loader2, X, AlertTriangle } from 'lucide-react';
 
 function SyncErrorBanner() {
@@ -42,6 +43,8 @@ export default function App() {
       loadUserData(uid);
     }
   }, [uid, loadUserData]);
+
+  useNotificationScheduler();
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');

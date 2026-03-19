@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Edit3, Trash2, Moon, Sun, Download, Send, Tag, ChevronRight, ChevronLeft, User, FileText, LogOut, Palette, Check, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Edit3, Trash2, Moon, Sun, Download, Send, Tag, ChevronRight, ChevronLeft, User, FileText, LogOut, Palette, Check, Calendar, Bell, BellOff } from 'lucide-react';
 import { addDays, subDays } from 'date-fns';
 import { useRoutineStore } from '../../stores/routineStore';
 import { useTheme } from '../../hooks/useTheme';
@@ -8,6 +8,7 @@ import type { ColorTheme, Routine } from '../../types';
 import { exportJSON, exportCSV, exportMarkdown } from '../../utils/export';
 import { sendDiscordReport } from '../../utils/discord';
 import { formatDate, formatDisplayDate, getWeekKey } from '../../utils/date';
+import { requestNotificationPermission, getNotificationPermission, canUseNotifications, showNotification } from '../../utils/pushNotification';
 import RoutineForm, { IconDisplay } from './RoutineForm';
 import KeywordManager from './KeywordManager';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -31,6 +32,35 @@ export default function SettingsTab() {
   const [sendResult, setSendResult] = useState<'success' | 'success-noimage' | 'error' | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<{ type: 'routine'; routine: Routine } | { type: 'logout' } | null>(null);
   const [reportDate, setReportDate] = useState(new Date());
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() =>
+    canUseNotifications() ? getNotificationPermission() : 'denied'
+  );
+  const pushSettings = settings.pushNotification ?? { enabled: false, time: '08:00', frequency: 'daily' as const };
+
+  useEffect(() => {
+    if (canUseNotifications()) setNotifPermission(getNotificationPermission());
+  }, []);
+
+  const handleRequestPermission = async () => {
+    const perm = await requestNotificationPermission();
+    setNotifPermission(perm);
+    if (perm === 'granted' && !pushSettings.enabled) {
+      updateSettings({ pushNotification: { ...pushSettings, enabled: true } });
+    }
+  };
+
+  const handleToggleNotification = async (enabled: boolean) => {
+    if (enabled && notifPermission !== 'granted') {
+      const perm = await requestNotificationPermission();
+      setNotifPermission(perm);
+      if (perm !== 'granted') return;
+    }
+    updateSettings({ pushNotification: { ...pushSettings, enabled } });
+  };
+
+  const handleTestNotification = () => {
+    showNotification('데일리613 테스트 알림', '회고 알림이 정상적으로 작동하고 있어요!', 'test');
+  };
 
   const reportDateStr = formatDate(reportDate);
   const isReportToday = reportDateStr === formatDate(new Date());
@@ -219,6 +249,94 @@ export default function SettingsTab() {
             {sendResult === 'success-noimage' && <p className="text-yellow-500 text-[13px] text-center font-medium" role="status">텍스트만 전송됨</p>}
             {sendResult === 'error' && <p className="text-red-500 text-[13px] text-center font-medium" role="alert">전송 실패. URL을 확인해주세요.</p>}
           </div>
+        </div>
+      </section>
+
+      {/* 알림 설정 */}
+      <section className="mb-5">
+        <h2 className="text-[13px] font-semibold text-text-secondary uppercase tracking-wide mb-3">알림 설정</h2>
+        <div className="rounded-2xl bg-surface-secondary border border-border overflow-hidden divide-y divide-border">
+          {!canUseNotifications() ? (
+            <div className="px-4 py-3.5 text-[13px] text-text-tertiary">이 브라우저는 알림을 지원하지 않습니다.</div>
+          ) : notifPermission === 'denied' ? (
+            <div className="px-4 py-3.5">
+              <div className="flex items-center gap-2.5 mb-2">
+                <BellOff size={17} className="text-text-tertiary" />
+                <span className="font-medium text-[15px]">알림 권한이 차단되었습니다</span>
+              </div>
+              <p className="text-[12px] text-text-tertiary">브라우저 설정에서 이 사이트의 알림 권한을 허용해주세요.</p>
+            </div>
+          ) : (
+            <>
+              {/* 알림 켜기/끄기 */}
+              <div className="flex items-center justify-between px-4 py-3.5">
+                <div className="flex items-center gap-2.5">
+                  {pushSettings.enabled ? <Bell size={17} className="text-primary-600" /> : <BellOff size={17} className="text-text-tertiary" />}
+                  <span className="font-medium text-[15px]">회고 알림</span>
+                </div>
+                {notifPermission === 'default' ? (
+                  <button
+                    onClick={handleRequestPermission}
+                    className="px-3 py-1.5 rounded-xl bg-primary-600 text-white text-[12px] font-semibold active:scale-95 transition-all"
+                  >
+                    허용
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleToggleNotification(!pushSettings.enabled)}
+                    role="switch"
+                    aria-checked={pushSettings.enabled}
+                    aria-label="회고 알림 전환"
+                    className={`w-[51px] h-[31px] rounded-full transition-colors relative ${pushSettings.enabled ? 'bg-primary-600' : 'bg-surface-tertiary'}`}
+                  >
+                    <div className={`w-[27px] h-[27px] bg-white rounded-full absolute top-[2px] transition-transform shadow-sm ${pushSettings.enabled ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
+                  </button>
+                )}
+              </div>
+
+              {pushSettings.enabled && notifPermission === 'granted' && (
+                <>
+                  {/* 알림 시간 */}
+                  <div className="px-4 py-3.5">
+                    <label className="block text-[12px] font-medium text-text-tertiary mb-1.5 ml-0.5">알림 시간</label>
+                    <input
+                      type="time"
+                      value={pushSettings.time}
+                      onChange={(e) => updateSettings({ pushNotification: { ...pushSettings, time: e.target.value } })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface text-text-primary text-[14px] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  {/* 알림 주기 */}
+                  <div className="px-4 py-3.5">
+                    <label className="block text-[12px] font-medium text-text-tertiary mb-2 ml-0.5">알림 주기</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['daily', 'weekly'] as const).map((freq) => (
+                        <button
+                          key={freq}
+                          onClick={() => updateSettings({ pushNotification: { ...pushSettings, frequency: freq } })}
+                          aria-pressed={pushSettings.frequency === freq}
+                          className={`py-2 rounded-xl text-[13px] font-semibold transition-all border ${pushSettings.frequency === freq ? 'bg-primary-600 text-white border-primary-600' : 'bg-surface border-border text-text-secondary'}`}
+                        >
+                          {freq === 'daily' ? '매일' : '매주 월요일'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 테스트 알림 */}
+                  <div className="px-4 py-3">
+                    <button
+                      onClick={handleTestNotification}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-border bg-surface text-text-secondary text-[13px] font-semibold active:scale-[0.98] transition-all"
+                    >
+                      <Bell size={14} />테스트 알림 보내기
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </div>
       </section>
 

@@ -51,9 +51,16 @@ export interface TimeEntry {
   endTime: string | null;
 }
 
+export interface PushNotificationSettings {
+  enabled: boolean;
+  time: string; // HH:MM format, e.g. "08:00"
+  frequency: 'daily' | 'weekly';
+}
+
 export interface AppSettings {
   discordWebhookUrl: string;
   darkMode: boolean;
   username: string;
   colorTheme?: ColorTheme;
+  pushNotification?: PushNotificationSettings;
 }
