@@ -105,7 +105,6 @@ export default function SettingsTab() {
       <section>
         <SectionCard
           title="루틴 관리"
-          subtitle="핵심 루틴을 한 리스트 안에서 정리하고 수정합니다."
           action={<Button onClick={() => { setEditingRoutine(undefined); setShowForm(true); }} variant="primary" size="sm"><Plus size={15} />추가</Button>}
         >
         {activeRoutines.length === 0 ? (
@@ -141,7 +140,7 @@ export default function SettingsTab() {
       </section>
 
       <section>
-        <SectionCard title="외관" subtitle="Apple식 절제감을 유지하면서 컬러와 명암을 바꿀 수 있습니다.">
+        <SectionCard title="외관">
           <div className="space-y-4">
           <div className="list-row">
             <div className="flex items-center gap-2.5">
@@ -194,7 +193,7 @@ export default function SettingsTab() {
       </section>
 
       <section>
-        <SectionCard title="Discord 연동" subtitle="리포트를 보내는 흐름도 같은 입력 규칙과 버튼 체계로 정리했습니다.">
+        <SectionCard title="Discord 연동">
           <div className="space-y-3">
             <Input label="표시 이름" type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="예: 홍길동" />
             <Input label="Webhook URL" type="url" value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/..." />
@@ -231,7 +230,7 @@ export default function SettingsTab() {
       </section>
 
       <section>
-        <SectionCard title="데이터 내보내기" subtitle="형식에 따라 동일한 버튼 규칙과 카드 구조를 사용합니다.">
+        <SectionCard title="데이터 내보내기">
         <div className="grid grid-cols-3 gap-2">
           <button onClick={handleExportJSON} aria-label="JSON으로 내보내기" className="card flex flex-col items-center justify-center gap-1.5 py-3.5 text-[13px] font-semibold" style={{ color: 'var(--ds-text-primary)' }}>
             <Download size={17} className="text-text-tertiary" /><span>JSON</span>
