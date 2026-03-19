@@ -11,7 +11,7 @@ import { formatDate, formatDisplayDate, getWeekKey } from '../../utils/date';
 import RoutineForm, { IconDisplay } from './RoutineForm';
 import KeywordManager from './KeywordManager';
 import ConfirmDialog from '../common/ConfirmDialog';
-import { Button, Card, IconButton, Input, Notice, Screen, ScreenHeader, SectionCard } from '../ui/primitives';
+import { Button, Card, IconButton, Input, Notice, Screen, SectionCard } from '../ui/primitives';
 
 export default function SettingsTab() {
   const routines = useRoutineStore((s) => s.routines);
@@ -75,11 +75,6 @@ export default function SettingsTab() {
 
   return (
     <Screen>
-      <ScreenHeader
-        eyebrow="Settings"
-        title="환경과 데이터 정리"
-        description="기능보다 질서를 먼저 두는 설정 화면으로, 관리 작업을 한 톤으로 맞췄습니다."
-      />
 
       <section>
         <Card className="p-4">
