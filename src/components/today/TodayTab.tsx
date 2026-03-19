@@ -6,6 +6,7 @@ import { formatDate, formatDisplayDate } from '../../utils/date';
 import RoutineCheckItem from './RoutineCheckItem';
 import KeywordFilter from '../common/KeywordFilter';
 import type { CheckLevel } from '../../types';
+import { Badge, Button, Card, ProgressBar, Screen, ScreenHeader, SectionCard } from '../ui/primitives';
 
 export default function TodayTab() {
   const routines = useRoutineStore((s) => s.routines);
@@ -38,73 +39,66 @@ export default function TodayTab() {
   const goToToday = () => setCurrentDate(new Date());
 
   return (
-    <div className="px-4 pt-5">
-      {/* 날짜 네비게이션 */}
-      <div className="mb-4 flex items-center justify-between">
-        <button onClick={() => setCurrentDate((d) => subDays(d, 1))} aria-label="이전 날짜" className="p-2 rounded-xl hover:bg-surface-secondary transition-colors">
-          <ChevronLeft size={20} className="text-text-secondary" />
-        </button>
-        <button onClick={goToToday} className={`text-[15px] font-medium transition-colors ${isToday ? 'text-text-secondary' : 'text-primary-600'}`}>
-          {formatDisplayDate(currentDate)}
-        </button>
-        <div className="flex items-center gap-1">
-          {rate === 100 && activeRoutines.length > 0 && (
-            <div className="flex items-center gap-1 text-done mr-1">
-              <Trophy size={16} />
-              <span className="text-xs font-bold">완벽!</span>
-            </div>
-          )}
-          <button onClick={() => setCurrentDate((d) => addDays(d, 1))} aria-label="다음 날짜" className="p-2 rounded-xl hover:bg-surface-secondary transition-colors">
-            <ChevronRight size={20} className="text-text-secondary" />
+    <Screen>
+      <ScreenHeader
+        eyebrow="Today"
+        title="오늘의 루틴"
+        description="복잡한 장식 없이, 지금 해야 할 일과 오늘의 진척만 선명하게 보여줍니다."
+        trailing={rate === 100 && activeRoutines.length > 0 ? <Badge tone="success"><Trophy size={12} />완벽</Badge> : null}
+      />
+
+      <Card className="p-4 sm:p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate((d) => subDays(d, 1))} aria-label="이전 날짜">
+            <ChevronLeft size={18} />
+          </Button>
+          <button
+            onClick={goToToday}
+            className="rounded-full px-4 py-2 text-[15px] font-semibold transition-colors"
+            style={{ color: isToday ? 'var(--ds-text-secondary)' : 'var(--ds-accent)' }}
+          >
+            {formatDisplayDate(currentDate)}
           </button>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate((d) => addDays(d, 1))} aria-label="다음 날짜">
+            <ChevronRight size={18} />
+          </Button>
         </div>
-      </div>
 
-      {/* 진행률 카드 */}
-      <div className="mb-5 p-4 rounded-2xl bg-surface-secondary border border-border">
-        <div className="flex items-end justify-between mb-3">
+        <div className="mb-4 flex items-end justify-between gap-4">
           <div>
-            <span className="text-[40px] font-bold text-text-primary leading-none tracking-tight">{rate}<span className="text-lg text-text-tertiary font-medium">%</span></span>
+            <div className="text-[44px] font-bold leading-none tracking-[-0.06em]" style={{ color: 'var(--ds-text-primary)' }}>
+              {rate}
+              <span className="ml-1 text-lg font-medium" style={{ color: 'var(--ds-text-tertiary)' }}>%</span>
+            </div>
+            <p className="mt-2 text-[13px]" style={{ color: 'var(--ds-text-secondary)' }}>
+              {completedCount} / {activeRoutines.length} 완료
+            </p>
           </div>
-          <span className="text-[13px] text-text-tertiary mb-1">
-            {selectedKeyword ? `${selectedKeyword}` : ''} {completedCount}/{activeRoutines.length}
-          </span>
+          {selectedKeyword ? <Badge tone="accent">{selectedKeyword}</Badge> : null}
         </div>
-        <div className="w-full h-2 bg-surface-tertiary rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500 ease-out"
-            style={{
-              width: `${rate}%`,
-              background: rate === 100
-                ? 'linear-gradient(90deg, #22c55e, #a855f7)'
-                : rate >= 50
-                  ? 'linear-gradient(90deg, #22c55e, #3b82f6)'
-                  : 'var(--color-primary-500)',
-            }}
-          />
-        </div>
-      </div>
+        <ProgressBar value={rate} />
+      </Card>
 
-      {/* 키워드 필터 */}
-      <div className="mb-4">
+      <SectionCard title="필터" subtitle="키워드로 오늘의 집중 영역을 좁혀볼 수 있어요.">
         <KeywordFilter />
-      </div>
+      </SectionCard>
 
-      {/* 루틴 목록 */}
-      {activeRoutines.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-text-tertiary text-[15px] mb-1">
-            {selectedKeyword ? `'${selectedKeyword}' 루틴이 없습니다` : '등록된 루틴이 없습니다'}
-          </p>
-          <p className="text-text-tertiary text-[13px]">설정에서 루틴을 추가해보세요</p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2.5 pb-4">
-          {activeRoutines.map((routine) => (
-            <RoutineCheckItem key={routine.id} routine={routine} currentLevel={dayRecord?.checks[routine.id] || 'none'} onToggle={handleToggle} />
-          ))}
-        </div>
-      )}
-    </div>
+      <SectionCard title="루틴 목록" subtitle="단계별 체크를 한 화면에서 빠르게 정리합니다.">
+        {activeRoutines.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="mb-1 text-[15px]" style={{ color: 'var(--ds-text-secondary)' }}>
+              {selectedKeyword ? `'${selectedKeyword}' 루틴이 없습니다` : '등록된 루틴이 없습니다'}
+            </p>
+            <p className="text-[13px]" style={{ color: 'var(--ds-text-tertiary)' }}>설정에서 루틴을 추가해보세요</p>
+          </div>
+        ) : (
+          <div className="list">
+            {activeRoutines.map((routine) => (
+              <RoutineCheckItem key={routine.id} routine={routine} currentLevel={dayRecord?.checks[routine.id] || 'none'} onToggle={handleToggle} />
+            ))}
+          </div>
+        )}
+      </SectionCard>
+    </Screen>
   );
 }

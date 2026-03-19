@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import TabBar from './TabBar';
+import { AppShell } from '../ui/primitives';
 
 interface LayoutProps {
   children: ReactNode;
@@ -7,9 +8,9 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-dvh bg-surface text-text-primary">
-      <main className="max-w-lg mx-auto pb-20">{children}</main>
+    <AppShell>
+      <main>{children}</main>
       <TabBar />
-    </div>
+    </AppShell>
   );
 }
