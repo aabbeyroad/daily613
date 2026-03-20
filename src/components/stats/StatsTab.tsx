@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Flame, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
@@ -9,7 +9,10 @@ import WeeklyRoutineGrid from './WeeklyRoutineGrid';
 
 const LEVEL_COLORS = { none: '#94a3b8', done: '#22c55e', more: '#3b82f6', max: '#a855f7' };
 
+type LevelDistPeriod = 'all' | 'week' | 'month';
+
 export default function StatsTab() {
+  const [levelDistPeriod, setLevelDistPeriod] = useState<LevelDistPeriod>('all');
   const routines = useRoutineStore((s) => s.routines);
   const records = useRoutineStore((s) => s.records);
   const selectedKeyword = useRoutineStore((s) => s.selectedKeyword);
@@ -57,8 +60,14 @@ export default function StatsTab() {
   const weeklyScore = getWeeklyScore(weekStart, weekEnd, true);
 
   const levelDistribution = useMemo(() => {
+    let filteredRecords = records;
+    if (levelDistPeriod === 'week') {
+      filteredRecords = records.filter((r) => r.date >= weekStart && r.date <= weekEnd);
+    } else if (levelDistPeriod === 'month') {
+      filteredRecords = records.filter((r) => r.date >= monthStart && r.date <= monthEnd);
+    }
     let doneCount = 0, moreCount = 0, maxCount = 0, noneCount = 0;
-    records.forEach((record) => {
+    filteredRecords.forEach((record) => {
       filteredRoutines.forEach((r) => {
         const level = record.checks[r.id];
         if (level === 'max') maxCount++;
@@ -73,7 +82,7 @@ export default function StatsTab() {
       { name: 'Done', value: doneCount, color: LEVEL_COLORS.done },
       { name: '미달성', value: noneCount, color: LEVEL_COLORS.none },
     ].filter((d) => d.value > 0);
-  }, [filteredRoutines, records]);
+  }, [filteredRoutines, records, levelDistPeriod, weekStart, weekEnd, monthStart, monthEnd]);
 
   const statCards = [
     { icon: Flame, label: '연속 달성', value: `${streak}일`, color: 'text-orange-500', bgColor: 'bg-orange-50 dark:bg-orange-900/20' },
@@ -136,10 +145,27 @@ export default function StatsTab() {
         <WeeklyRoutineGrid />
       </div>
 
-      {/* 달성 단계 비율 */}
+      {/* 달성 비율 */}
       {levelDistribution.length > 0 && (
         <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
-          <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">달성 단계 비율</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-[13px] text-text-secondary uppercase tracking-wide">달성 비율</h3>
+            <div className="flex bg-surface-tertiary rounded-full p-0.5">
+              {(['all', 'week', 'month'] as const).map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setLevelDistPeriod(period)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
+                    levelDistPeriod === period
+                      ? 'bg-surface text-text-primary shadow-sm'
+                      : 'text-text-tertiary'
+                  }`}
+                >
+                  {period === 'all' ? '전체' : period === 'week' ? '이번 주' : '이번 달'}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex items-center">
             <div className="w-28 h-28">
               <ResponsiveContainer width="100%" height="100%">
