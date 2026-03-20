@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Play, Square, Clock } from 'lucide-react';
+import { Play, Square, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { subDays, addDays, subWeeks, addWeeks, format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { useRoutineStore } from '../../stores/routineStore';
-import { formatDate } from '../../utils/date';
+import { formatDate, formatDisplayDate, getWeekDays } from '../../utils/date';
 import { IconDisplay } from '../settings/RoutineForm';
 import RoutineDetailModal from './RoutineDetailModal';
 
@@ -24,13 +26,14 @@ function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
-function Clock24({ entries, colorMap, statusText, isTracking, activeRoutineIcon, activeRoutineName }: {
+function Clock24({ entries, colorMap, statusText, isTracking, activeRoutineIcon, activeRoutineName, showCurrentTime }: {
   entries: { routineId: string; startMin: number; endMin: number }[];
   colorMap: Record<string, string>;
   statusText: string;
   isTracking: boolean;
   activeRoutineIcon?: string;
   activeRoutineName?: string;
+  showCurrentTime?: boolean;
 }) {
   const size = 310;
   const cx = size / 2;
@@ -103,7 +106,7 @@ function Clock24({ entries, colorMap, statusText, isTracking, activeRoutineIcon,
       ))}
 
       {/* Current time indicator */}
-      {(() => {
+      {showCurrentTime && (() => {
         const now = new Date();
         const nowMin = now.getHours() * 60 + now.getMinutes();
         const angle = (nowMin / totalMin) * 360 - 90;
@@ -120,17 +123,14 @@ function Clock24({ entries, colorMap, statusText, isTracking, activeRoutineIcon,
       {/* Center status */}
       {isTracking && activeRoutineIcon && activeRoutineName ? (
         <g>
-          {/* Routine icon (emoji only) */}
           {!activeRoutineIcon.startsWith('lucide:') && (
             <text x={cx} y={cy - 20} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 22 }}>
               {activeRoutineIcon}
             </text>
           )}
-          {/* Routine name */}
           <text x={cx} y={cy + (activeRoutineIcon.startsWith('lucide:') ? -4 : 4)} textAnchor="middle" dominantBaseline="central" className="fill-text-primary font-medium" style={{ fontSize: 11 }}>
             {activeRoutineName.length > 8 ? activeRoutineName.slice(0, 8) + '…' : activeRoutineName}
           </text>
-          {/* Blinking 트래킹 중 */}
           <text x={cx} y={cy + 22} textAnchor="middle" dominantBaseline="central" className="fill-primary-600 font-semibold" style={{ fontSize: 10 }}>
             트래킹 중
             <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite" />
@@ -161,9 +161,21 @@ export default function TrackingTab() {
   const toggleTracking = useRoutineStore((s) => s.toggleTracking);
   const [, setTick] = useState(0);
   const [mode, setMode] = useState<'routine' | 'available'>('routine');
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedWeekDate, setSelectedWeekDate] = useState(new Date());
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
 
-  const today = formatDate(new Date());
+  const todayStr = formatDate(new Date());
+  const dateStr = formatDate(selectedDate);
+  const isToday = dateStr === todayStr;
+
+  const weekDays = getWeekDays(selectedWeekDate);
+  const weekStart = formatDate(weekDays[0]);
+  const weekEnd = formatDate(weekDays[6]);
+  const currentWeekStart = formatDate(getWeekDays(new Date())[0]);
+  const isCurrentWeek = weekStart === currentWeekStart;
+
   const activeRoutines = useMemo(() => routines.filter((r) => !r.archived), [routines]);
 
   const colorMap = useMemo(() => {
@@ -175,12 +187,19 @@ export default function TrackingTab() {
     return map;
   }, [activeRoutines]);
 
-  const todayEntries = useMemo(() =>
-    timeEntries.filter((e) => e.date === today),
-    [timeEntries, today]
+  // Daily entries for selected date
+  const dailyEntries = useMemo(() =>
+    timeEntries.filter((e) => e.date === dateStr),
+    [timeEntries, dateStr]
   );
 
-  const hasActive = todayEntries.some((e) => e.endTime === null);
+  // Weekly entries for selected week
+  const weeklyEntries = useMemo(() =>
+    timeEntries.filter((e) => e.date >= weekStart && e.date <= weekEnd),
+    [timeEntries, weekStart, weekEnd]
+  );
+
+  const hasActive = timeEntries.some((e) => e.endTime === null);
 
   useEffect(() => {
     if (!hasActive) return;
@@ -188,11 +207,12 @@ export default function TrackingTab() {
     return () => clearInterval(id);
   }, [hasActive]);
 
+  // Daily clock entries
   const clockEntries = useMemo(() => {
     const now = new Date();
     const filtered = mode === 'available'
-      ? todayEntries.filter((e) => e.routineId === AVAILABLE_ROUTINE_ID)
-      : todayEntries.filter((e) => e.routineId !== AVAILABLE_ROUTINE_ID);
+      ? dailyEntries.filter((e) => e.routineId === AVAILABLE_ROUTINE_ID)
+      : dailyEntries.filter((e) => e.routineId !== AVAILABLE_ROUTINE_ID);
     return filtered.map((e) => {
       const start = new Date(e.startTime);
       const end = e.endTime ? new Date(e.endTime) : now;
@@ -201,34 +221,69 @@ export default function TrackingTab() {
       return { routineId: e.routineId, startMin, endMin: endMin <= startMin ? endMin + 1 : endMin };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todayEntries, mode, hasActive ? Math.floor(Date.now() / 1000) : 0]);
+  }, [dailyEntries, mode, hasActive ? Math.floor(Date.now() / 1000) : 0]);
 
+  // Daily cumulative time
   const cumulativeTime = useMemo(() => {
     const now = Date.now();
     const map: Record<string, number> = {};
-    todayEntries.forEach((e) => {
+    dailyEntries.forEach((e) => {
       const start = new Date(e.startTime).getTime();
       const end = e.endTime ? new Date(e.endTime).getTime() : now;
       map[e.routineId] = (map[e.routineId] || 0) + (end - start);
     });
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todayEntries, hasActive ? Math.floor(Date.now() / 1000) : 0]);
+  }, [dailyEntries, hasActive ? Math.floor(Date.now() / 1000) : 0]);
 
-  // Routine mode totals (exclude __available__)
+  // Weekly cumulative time
+  const weeklyCumulativeTime = useMemo(() => {
+    const now = Date.now();
+    const map: Record<string, number> = {};
+    const filtered = mode === 'available'
+      ? weeklyEntries.filter((e) => e.routineId === AVAILABLE_ROUTINE_ID)
+      : weeklyEntries.filter((e) => e.routineId !== AVAILABLE_ROUTINE_ID);
+    filtered.forEach((e) => {
+      const start = new Date(e.startTime).getTime();
+      const end = e.endTime ? new Date(e.endTime).getTime() : now;
+      map[e.routineId] = (map[e.routineId] || 0) + (end - start);
+    });
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeklyEntries, mode, hasActive ? Math.floor(Date.now() / 1000) : 0]);
+
+  // Weekly per-day totals
+  const weeklyDayTotals = useMemo(() => {
+    const now = Date.now();
+    const map: Record<string, number> = {};
+    const filtered = mode === 'available'
+      ? weeklyEntries.filter((e) => e.routineId === AVAILABLE_ROUTINE_ID)
+      : weeklyEntries.filter((e) => e.routineId !== AVAILABLE_ROUTINE_ID);
+    filtered.forEach((e) => {
+      const start = new Date(e.startTime).getTime();
+      const end = e.endTime ? new Date(e.endTime).getTime() : now;
+      map[e.date] = (map[e.date] || 0) + (end - start);
+    });
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeklyEntries, mode, hasActive ? Math.floor(Date.now() / 1000) : 0]);
+
   const routineTotalTime = Object.entries(cumulativeTime)
     .filter(([id]) => id !== AVAILABLE_ROUTINE_ID)
     .reduce((sum, [, ms]) => sum + ms, 0);
 
-  // Available mode
+  const weeklyRoutineTotalTime = Object.values(weeklyCumulativeTime).reduce((sum, ms) => sum + ms, 0);
+
   const availableEntries = useMemo(() =>
-    todayEntries.filter((e) => e.routineId === AVAILABLE_ROUTINE_ID),
-    [todayEntries]
+    dailyEntries.filter((e) => e.routineId === AVAILABLE_ROUTINE_ID),
+    [dailyEntries]
   );
   const isAvailableActive = availableEntries.some((e) => e.endTime === null);
   const availableCumMs = cumulativeTime[AVAILABLE_ROUTINE_ID] || 0;
+  const weeklyAvailableMs = weeklyCumulativeTime[AVAILABLE_ROUTINE_ID] || 0;
 
   const currentTotalTime = mode === 'routine' ? routineTotalTime : availableCumMs;
+  const currentWeeklyTotalTime = mode === 'routine' ? weeklyRoutineTotalTime : weeklyAvailableMs;
 
   const statusText = useMemo(() => {
     if (mode === 'available') {
@@ -243,110 +298,328 @@ export default function TrackingTab() {
 
   const isCurrentlyTracking = mode === 'available' ? isAvailableActive : hasActive;
 
-  // Active routine info for center status display
   const activeRoutineInfo = useMemo(() => {
     if (mode === 'available') return null;
-    const activeEntry = todayEntries.find((e) => e.endTime === null && e.routineId !== AVAILABLE_ROUTINE_ID);
+    const activeEntry = timeEntries.find((e) => e.endTime === null && e.routineId !== AVAILABLE_ROUTINE_ID);
     if (!activeEntry) return null;
     const routine = activeRoutines.find((r) => r.id === activeEntry.routineId);
     return routine ? { icon: routine.icon, name: routine.name } : null;
-  }, [mode, todayEntries, activeRoutines]);
+  }, [mode, timeEntries, activeRoutines]);
+
+  const weekLabel = `${format(weekDays[0], 'M월 d일', { locale: ko })} ~ ${format(weekDays[6], 'M월 d일', { locale: ko })}`;
 
   return (
     <div className="px-4 pt-5 pb-4">
-      {/* Chart section */}
-      <div className="mb-5 p-4">
-        <Clock24
-          entries={clockEntries}
-          colorMap={colorMap}
-          statusText={statusText}
-          isTracking={isCurrentlyTracking}
-          activeRoutineIcon={activeRoutineInfo?.icon}
-          activeRoutineName={activeRoutineInfo?.name}
-        />
-        {currentTotalTime > 0 && (
-          <p className="text-center text-[12px] text-text-tertiary mt-2">
-            오늘 총 트래킹: <span className="font-bold text-text-primary">{formatDuration(currentTotalTime)}</span>
-          </p>
-        )}
-
-        {/* Mode toggle */}
-        <div className="flex bg-surface-tertiary rounded-full p-1 mt-3">
-          <button
-            onClick={() => setMode('routine')}
-            className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
-              mode === 'routine'
-                ? 'bg-surface text-text-primary shadow-sm'
-                : 'text-text-tertiary'
-            }`}
-          >
-            루틴
-          </button>
-          <button
-            onClick={() => setMode('available')}
-            className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
-              mode === 'available'
-                ? 'bg-surface text-text-primary shadow-sm'
-                : 'text-text-tertiary'
-            }`}
-          >
-            가용시간
-          </button>
-        </div>
+      {/* 일간/주간 뷰 토글 */}
+      <div className="flex bg-surface-tertiary rounded-full p-1 mb-4">
+        <button
+          onClick={() => setViewMode('daily')}
+          className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+            viewMode === 'daily'
+              ? 'bg-surface text-text-primary shadow-sm'
+              : 'text-text-tertiary'
+          }`}
+        >
+          일간
+        </button>
+        <button
+          onClick={() => setViewMode('weekly')}
+          className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+            viewMode === 'weekly'
+              ? 'bg-surface text-text-primary shadow-sm'
+              : 'text-text-tertiary'
+          }`}
+        >
+          주간
+        </button>
       </div>
 
-      {/* Routine mode */}
-      {mode === 'routine' && (
+      {/* 날짜/주간 네비게이션 */}
+      {viewMode === 'daily' ? (
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+            className="p-2 rounded-xl bg-surface-secondary border border-border active:scale-95 transition-transform"
+          >
+            <ChevronLeft size={16} className="text-text-secondary" />
+          </button>
+          <button
+            onClick={() => setSelectedDate(new Date())}
+            className={`text-[14px] font-semibold transition-colors ${isToday ? 'text-primary-600' : 'text-text-primary'}`}
+          >
+            {isToday ? '오늘' : formatDisplayDate(selectedDate)}
+          </button>
+          <button
+            onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+            className="p-2 rounded-xl bg-surface-secondary border border-border active:scale-95 transition-transform"
+            disabled={isToday}
+          >
+            <ChevronRight size={16} className={isToday ? 'text-text-tertiary' : 'text-text-secondary'} />
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => setSelectedWeekDate(subWeeks(selectedWeekDate, 1))}
+            className="p-2 rounded-xl bg-surface-secondary border border-border active:scale-95 transition-transform"
+          >
+            <ChevronLeft size={16} className="text-text-secondary" />
+          </button>
+          <button
+            onClick={() => setSelectedWeekDate(new Date())}
+            className={`text-[14px] font-semibold transition-colors ${isCurrentWeek ? 'text-primary-600' : 'text-text-primary'}`}
+          >
+            {isCurrentWeek ? '이번 주' : weekLabel}
+          </button>
+          <button
+            onClick={() => setSelectedWeekDate(addWeeks(selectedWeekDate, 1))}
+            className="p-2 rounded-xl bg-surface-secondary border border-border active:scale-95 transition-transform"
+            disabled={isCurrentWeek}
+          >
+            <ChevronRight size={16} className={isCurrentWeek ? 'text-text-tertiary' : 'text-text-secondary'} />
+          </button>
+        </div>
+      )}
+
+      {/* 일간 뷰 */}
+      {viewMode === 'daily' && (
         <>
-          <div className="space-y-2 mb-5">
-            {activeRoutines.map((routine) => {
-              const isActive = todayEntries.some((e) => e.routineId === routine.id && e.endTime === null);
-              const cumMs = cumulativeTime[routine.id] || 0;
-              const color = colorMap[routine.id];
+          {/* Chart section */}
+          <div className="mb-5 p-4">
+            <Clock24
+              entries={clockEntries}
+              colorMap={colorMap}
+              statusText={statusText}
+              isTracking={isCurrentlyTracking && isToday}
+              activeRoutineIcon={isToday ? activeRoutineInfo?.icon : undefined}
+              activeRoutineName={isToday ? activeRoutineInfo?.name : undefined}
+              showCurrentTime={isToday}
+            />
+            {currentTotalTime > 0 && (
+              <p className="text-center text-[12px] text-text-tertiary mt-2">
+                {isToday ? '오늘' : formatDisplayDate(selectedDate)} 총 트래킹: <span className="font-bold text-text-primary">{formatDuration(currentTotalTime)}</span>
+              </p>
+            )}
 
-              return (
-                <div key={routine.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isActive ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-surface-secondary border-border'}`}>
-                  {/* Clickable info area → opens modal */}
-                  <div
-                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-                    onClick={() => setSelectedRoutineId(routine.id)}
-                  >
-                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      {routine.icon && <IconDisplay icon={routine.icon} size={16} />}
-                      <span className="text-[13px] font-medium text-text-primary truncate">{routine.name}</span>
-                    </div>
-                    <span className="text-[12px] font-mono text-text-secondary flex-shrink-0">
-                      {cumMs > 0 ? formatDuration(cumMs) : '--'}
-                    </span>
-                  </div>
-
-                  {/* Play/Stop button */}
-                  <button
-                    onClick={() => toggleTracking(routine.id)}
-                    className={`p-2 rounded-lg transition-all flex-shrink-0 ${
-                      isActive
-                        ? 'bg-red-500 text-white active:scale-95'
-                        : 'bg-primary-600 text-white active:scale-95'
-                    }`}
-                  >
-                    {isActive ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-                  </button>
-                </div>
-              );
-            })}
+            {/* Mode toggle */}
+            <div className="flex bg-surface-tertiary rounded-full p-1 mt-3">
+              <button
+                onClick={() => setMode('routine')}
+                className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+                  mode === 'routine'
+                    ? 'bg-surface text-text-primary shadow-sm'
+                    : 'text-text-tertiary'
+                }`}
+              >
+                루틴
+              </button>
+              <button
+                onClick={() => setMode('available')}
+                className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+                  mode === 'available'
+                    ? 'bg-surface text-text-primary shadow-sm'
+                    : 'text-text-tertiary'
+                }`}
+              >
+                가용시간
+              </button>
+            </div>
           </div>
 
-          {routineTotalTime > 0 && (
-            <div className="p-4 rounded-2xl bg-surface-secondary border border-border">
-              <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">일일 누적 시간</h3>
+          {/* Routine mode */}
+          {mode === 'routine' && (
+            <>
+              <div className="space-y-2 mb-5">
+                {activeRoutines.map((routine) => {
+                  const isActive = isToday && timeEntries.some((e) => e.routineId === routine.id && e.endTime === null);
+                  const cumMs = cumulativeTime[routine.id] || 0;
+                  const color = colorMap[routine.id];
+
+                  return (
+                    <div key={routine.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isActive ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-surface-secondary border-border'}`}>
+                      <div
+                        className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                        onClick={() => setSelectedRoutineId(routine.id)}
+                      >
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          {routine.icon && <IconDisplay icon={routine.icon} size={16} />}
+                          <span className="text-[13px] font-medium text-text-primary truncate">{routine.name}</span>
+                        </div>
+                        <span className="text-[12px] font-mono text-text-secondary flex-shrink-0">
+                          {cumMs > 0 ? formatDuration(cumMs) : '--'}
+                        </span>
+                      </div>
+
+                      {isToday && (
+                        <button
+                          onClick={() => toggleTracking(routine.id)}
+                          className={`p-2 rounded-lg transition-all flex-shrink-0 ${
+                            isActive
+                              ? 'bg-red-500 text-white active:scale-95'
+                              : 'bg-primary-600 text-white active:scale-95'
+                          }`}
+                        >
+                          {isActive ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {routineTotalTime > 0 && (
+                <div className="p-4 rounded-2xl bg-surface-secondary border border-border">
+                  <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">일일 누적 시간</h3>
+                  <div className="space-y-2">
+                    {activeRoutines
+                      .filter((r) => (cumulativeTime[r.id] || 0) > 0)
+                      .sort((a, b) => (cumulativeTime[b.id] || 0) - (cumulativeTime[a.id] || 0))
+                      .map((routine) => {
+                        const ms = cumulativeTime[routine.id] || 0;
+                        const pct = routineTotalTime > 0 ? (ms / routineTotalTime) * 100 : 0;
+                        const color = colorMap[routine.id];
+                        return (
+                          <div key={routine.id}>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                                {routine.icon && <IconDisplay icon={routine.icon} size={13} />}
+                                <span className="text-[12px] font-medium text-text-primary">{routine.name}</span>
+                              </div>
+                              <span className="text-[11px] font-mono text-text-secondary">{formatDuration(ms)}</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-surface-tertiary overflow-hidden">
+                              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Available time mode */}
+          {mode === 'available' && (
+            <div className="space-y-4">
+              <div className={`p-4 rounded-2xl border transition-all ${isAvailableActive ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-surface-secondary border-border'}`}>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
+                    onClick={() => setSelectedRoutineId(AVAILABLE_ROUTINE_ID)}
+                  >
+                    <Clock size={18} className="text-text-tertiary" />
+                    <span className="text-[14px] font-medium text-text-primary">가용시간</span>
+                    <span className="text-[13px] font-mono text-text-secondary ml-auto">
+                      {availableCumMs > 0 ? formatDuration(availableCumMs) : '--'}
+                    </span>
+                  </div>
+                  {isToday && (
+                    <button
+                      onClick={() => toggleTracking(AVAILABLE_ROUTINE_ID)}
+                      className={`p-2.5 rounded-xl transition-all flex-shrink-0 ${
+                        isAvailableActive
+                          ? 'bg-red-500 text-white active:scale-95'
+                          : 'bg-primary-600 text-white active:scale-95'
+                      }`}
+                    >
+                      {isAvailableActive ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 주간 뷰 */}
+      {viewMode === 'weekly' && (
+        <>
+          {/* Mode toggle */}
+          <div className="flex bg-surface-tertiary rounded-full p-1 mb-5">
+            <button
+              onClick={() => setMode('routine')}
+              className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+                mode === 'routine'
+                  ? 'bg-surface text-text-primary shadow-sm'
+                  : 'text-text-tertiary'
+              }`}
+            >
+              루틴
+            </button>
+            <button
+              onClick={() => setMode('available')}
+              className={`flex-1 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+                mode === 'available'
+                  ? 'bg-surface text-text-primary shadow-sm'
+                  : 'text-text-tertiary'
+              }`}
+            >
+              가용시간
+            </button>
+          </div>
+
+          {/* 주간 총 트래킹 시간 */}
+          {currentWeeklyTotalTime > 0 && (
+            <div className="p-4 rounded-2xl bg-primary-50 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-800 mb-5">
+              <p className="text-center text-[12px] text-text-tertiary">
+                {isCurrentWeek ? '이번 주' : weekLabel} 총 트래킹
+              </p>
+              <p className="text-center text-[24px] font-bold text-text-primary mt-1">
+                {formatDuration(currentWeeklyTotalTime)}
+              </p>
+            </div>
+          )}
+
+          {/* 요일별 트래킹 현황 */}
+          <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
+            <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">요일별 트래킹</h3>
+            <div className="grid grid-cols-7 gap-1">
+              {weekDays.map((day) => {
+                const dayStr = formatDate(day);
+                const dayMs = weeklyDayTotals[dayStr] || 0;
+                const maxDayMs = Math.max(...Object.values(weeklyDayTotals), 1);
+                const pct = (dayMs / maxDayMs) * 100;
+                const dayLabel = format(day, 'EEE', { locale: ko });
+                const isCurrentDay = dayStr === todayStr;
+                return (
+                  <div key={dayStr} className="flex flex-col items-center gap-1">
+                    <span className={`text-[10px] font-medium ${isCurrentDay ? 'text-primary-600' : 'text-text-tertiary'}`}>{dayLabel}</span>
+                    <div className="w-full h-16 rounded-lg bg-surface-tertiary overflow-hidden flex flex-col justify-end">
+                      {dayMs > 0 && (
+                        <div
+                          className="w-full rounded-lg transition-all"
+                          style={{
+                            height: `${pct}%`,
+                            backgroundColor: isCurrentDay ? '#6366f1' : '#94a3b8',
+                            opacity: 0.8,
+                          }}
+                        />
+                      )}
+                    </div>
+                    <span className="text-[9px] font-mono text-text-tertiary">
+                      {dayMs > 0 ? formatDuration(dayMs) : '--'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 주간 루틴별 누적 시간 */}
+          {mode === 'routine' && weeklyRoutineTotalTime > 0 && (
+            <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
+              <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">루틴별 주간 누적</h3>
               <div className="space-y-2">
                 {activeRoutines
-                  .filter((r) => (cumulativeTime[r.id] || 0) > 0)
-                  .sort((a, b) => (cumulativeTime[b.id] || 0) - (cumulativeTime[a.id] || 0))
+                  .filter((r) => (weeklyCumulativeTime[r.id] || 0) > 0)
+                  .sort((a, b) => (weeklyCumulativeTime[b.id] || 0) - (weeklyCumulativeTime[a.id] || 0))
                   .map((routine) => {
-                    const ms = cumulativeTime[routine.id] || 0;
-                    const pct = routineTotalTime > 0 ? (ms / routineTotalTime) * 100 : 0;
+                    const ms = weeklyCumulativeTime[routine.id] || 0;
+                    const pct = weeklyRoutineTotalTime > 0 ? (ms / weeklyRoutineTotalTime) * 100 : 0;
                     const color = colorMap[routine.id];
                     return (
                       <div key={routine.id}>
@@ -367,38 +640,29 @@ export default function TrackingTab() {
               </div>
             </div>
           )}
-        </>
-      )}
 
-      {/* Available time mode */}
-      {mode === 'available' && (
-        <div className="space-y-4">
-          <div className={`p-4 rounded-2xl border transition-all ${isAvailableActive ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-surface-secondary border-border'}`}>
-            <div className="flex items-center gap-3">
-              {/* Clickable info area → opens modal */}
-              <div
-                className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
-                onClick={() => setSelectedRoutineId(AVAILABLE_ROUTINE_ID)}
-              >
-                <Clock size={18} className="text-text-tertiary" />
-                <span className="text-[14px] font-medium text-text-primary">가용시간</span>
-                <span className="text-[13px] font-mono text-text-secondary ml-auto">
-                  {availableCumMs > 0 ? formatDuration(availableCumMs) : '--'}
-                </span>
+          {/* 주간 가용시간 */}
+          {mode === 'available' && (
+            <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
+              <div className="flex items-center gap-3">
+                <Clock size={20} className="text-text-tertiary" />
+                <div className="flex-1">
+                  <div className="text-[13px] font-medium text-text-primary">가용시간 주간 합계</div>
+                  <div className="text-[20px] font-bold text-text-primary mt-0.5">
+                    {weeklyAvailableMs > 0 ? formatDuration(weeklyAvailableMs) : '--'}
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={() => toggleTracking(AVAILABLE_ROUTINE_ID)}
-                className={`p-2.5 rounded-xl transition-all flex-shrink-0 ${
-                  isAvailableActive
-                    ? 'bg-red-500 text-white active:scale-95'
-                    : 'bg-primary-600 text-white active:scale-95'
-                }`}
-              >
-                {isAvailableActive ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-              </button>
             </div>
-          </div>
-        </div>
+          )}
+
+          {/* 데이터 없을 때 */}
+          {currentWeeklyTotalTime === 0 && (
+            <div className="text-center py-12 text-text-tertiary text-[13px]">
+              이 주에 트래킹된 데이터가 없습니다
+            </div>
+          )}
+        </>
       )}
 
       {/* Routine detail modal */}
@@ -419,7 +683,7 @@ export default function TrackingTab() {
           routine = activeRoutines.find((r) => r.id === selectedRoutineId);
           if (!routine) return null;
         }
-        const routineEntries = todayEntries.filter((e) => e.routineId === selectedRoutineId);
+        const routineEntries = dailyEntries.filter((e) => e.routineId === selectedRoutineId);
         const routineTotalMs = cumulativeTime[selectedRoutineId] || 0;
         return (
           <RoutineDetailModal
