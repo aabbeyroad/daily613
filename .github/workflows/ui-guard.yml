@@ -1,0 +1,73 @@
+name: UI Rollback Guard
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  ui-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check critical UI files exist
+        run: |
+          missing=0
+
+          for file in src/index.css src/components/ui/primitives.tsx; do
+            if [ ! -f "$file" ]; then
+              echo "::error::Critical UI file missing: $file"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -eq 1 ]; then
+            echo "::error::Critical UI files are missing. This PR may be reverting the redesign."
+            exit 1
+          fi
+
+          echo "All critical UI files present."
+
+      - name: Check UI file sizes for unexpected shrinkage
+        run: |
+          fail=0
+
+          # index.css should be at least 15KB (redesign added ~19KB)
+          css_size=$(wc -c < src/index.css)
+          if [ "$css_size" -lt 15000 ]; then
+            echo "::warning::src/index.css is only ${css_size} bytes (expected >= 15000). Possible UI rollback."
+            fail=1
+          else
+            echo "src/index.css size OK: ${css_size} bytes"
+          fi
+
+          # primitives.tsx should exist and be non-trivial
+          prim_size=$(wc -c < src/components/ui/primitives.tsx)
+          if [ "$prim_size" -lt 500 ]; then
+            echo "::warning::primitives.tsx is only ${prim_size} bytes (expected >= 500). Possible UI rollback."
+            fail=1
+          else
+            echo "primitives.tsx size OK: ${prim_size} bytes"
+          fi
+
+          if [ "$fail" -eq 1 ]; then
+            echo "::error::UI files are suspiciously small. Review this PR for unintended rollback."
+            exit 1
+          fi
+
+          echo "UI file size checks passed."
+
+      - name: Check for unintended file deletions vs main
+        run: |
+          deleted=$(git diff origin/main...HEAD --diff-filter=D --name-only | grep -E '^src/' || true)
+
+          if [ -n "$deleted" ]; then
+            echo "::warning::The following src/ files were deleted in this PR:"
+            echo "$deleted"
+            echo ""
+            echo "Please verify these deletions are intentional."
+          else
+            echo "No src/ files deleted."
+          fi
