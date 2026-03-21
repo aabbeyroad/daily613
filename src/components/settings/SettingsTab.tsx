@@ -10,6 +10,7 @@ import { sendDiscordReport } from '../../utils/discord';
 import { formatDate, formatDisplayDate, getWeekKey } from '../../utils/date';
 import RoutineForm, { IconDisplay } from './RoutineForm';
 import KeywordManager from './KeywordManager';
+import WidgetSetup from './WidgetSetup';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { Button, Card, IconButton, Input, Notice, Screen, SectionCard } from '../ui/primitives';
 
@@ -223,6 +224,8 @@ export default function SettingsTab() {
           </div>
         </SectionCard>
       </section>
+
+      <WidgetSetup />
 
       <section>
         <SectionCard title="데이터 내보내기">
