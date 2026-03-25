@@ -101,6 +101,24 @@ export default function ReflectionForm({ date, type, existing, onClose }: Props)
     return { keeps, problems, tries };
   }, [type, date, reflections]);
 
+  // 일간 루틴 이행 현황 (daily 전용)
+  const dailyStats = useMemo(() => {
+    if (type !== 'daily') return null;
+    const record = records.find(r => r.date === date);
+    const completed = activeRoutines.filter(r => (record?.checks[r.id] || 'none') !== 'none').length;
+    const total = activeRoutines.length;
+    const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return {
+      items: activeRoutines.map(routine => ({
+        routine,
+        level: ((record?.checks[routine.id]) || 'none') as CheckLevel,
+      })),
+      completed,
+      total,
+      rate,
+    };
+  }, [type, date, records, activeRoutines]);
+
   // 주간 루틴 현황 데이터
   const weeklyStats = useMemo(() => {
     if (type !== 'weekly') return null;
@@ -212,6 +230,84 @@ export default function ReflectionForm({ date, type, existing, onClose }: Props)
       }
     >
       <div className="space-y-4">
+
+        {/* ── 일간: 오늘 루틴 이행 현황 (컴팩트) ── */}
+        {type === 'daily' && dailyStats && dailyStats.total > 0 && (
+          <div className="rounded-2xl px-3 py-2.5" style={{ background: 'var(--ds-bg-secondary)', border: '1px solid var(--ds-border)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ds-text-tertiary)' }}>오늘 루틴 현황</span>
+              <span className="text-[12px] font-bold" style={{ color: dailyStats.rate >= 80 ? 'var(--color-done)' : dailyStats.rate >= 50 ? 'var(--color-more)' : 'var(--ds-text-tertiary)' }}>
+                {dailyStats.completed}/{dailyStats.total} ({dailyStats.rate}%)
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+              {dailyStats.items.map(({ routine, level }) => (
+                <div key={routine.id} className="flex items-center gap-1.5">
+                  <div style={{ width: 10, height: 10, borderRadius: 3, flexShrink: 0, background: LEVEL_COLORS[level] }} />
+                  {routine.icon ? <IconDisplay icon={routine.icon} size={11} /> : null}
+                  <span className="text-[11px]" style={{ color: level === 'none' ? 'var(--ds-text-tertiary)' : 'var(--ds-text-primary)', fontWeight: level !== 'none' ? 600 : 400 }}>
+                    {routine.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── 주간: 루틴별 평가 (최상단) ── */}
+        {type === 'weekly' && weeklyStats && weeklyStats.routineData.length > 0 && (
+          <SectionCard title="루틴별 평가" subtitle="각 루틴에 대한 감정 평가와 개선 메모를 남깁니다.">
+            <div className="space-y-3">
+              {activeRoutines.map((routine) => {
+                const evalState = routineEvals[routine.id];
+                const rate = weeklyStats.routineData.find((r) => r.routine.id === routine.id)?.rate ?? 0;
+                return (
+                  <div key={routine.id} className="card p-3">
+                    <div className="mb-2.5 flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        {routine.icon ? <IconDisplay icon={routine.icon} size={15} /> : null}
+                        <span className="truncate text-[13px] font-semibold" style={{ color: 'var(--ds-text-primary)' }}>{routine.name}</span>
+                      </div>
+                      <Badge tone={rate >= 80 ? 'success' : rate >= 50 ? 'accent' : 'default'}>{rate}%</Badge>
+                    </div>
+                    <div className="mb-2 grid grid-cols-3 gap-2">
+                      {EVAL_CONFIG.map(({ key, label, icon: Icon, color, bgColor, activeBg }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setEval(routine.id, key)}
+                          className="rounded-[18px] border px-3 py-2 text-[12px] font-semibold transition-all"
+                          style={{
+                            color: evalState?.evaluation === key ? color : 'var(--ds-text-secondary)',
+                            background: evalState?.evaluation === key ? activeBg : bgColor,
+                            borderColor: evalState?.evaluation === key ? color : 'transparent',
+                          }}
+                        >
+                          <span className="flex items-center justify-center gap-1">
+                            <Icon size={13} />
+                            {label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    {evalState?.evaluation ? (
+                      <TextArea
+                        value={evalState.improvement}
+                        onChange={(e) => setImprovement(routine.id, e.target.value)}
+                        placeholder=""
+                        rows={2}
+                      />
+                    ) : (
+                      <Notice>평가를 선택하면 개선 방향을 더 자세히 적을 수 있습니다.</Notice>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* ── Keep / Problem / Try ── */}
         <SectionCard title="Keep" subtitle="잘한 것과 앞으로도 유지하고 싶은 흐름을 적습니다.">
           {weeklyDailyKPT ? <DailySummaryBlock items={weeklyDailyKPT.keeps} color="var(--color-done)" /> : null}
           <TextArea value={keep} onChange={(e) => setKeep(e.target.value)} placeholder={type === 'weekly' ? '이번 주 잘한 것, 계속할 것...' : '오늘 잘한 것...'} rows={4} />
@@ -227,109 +323,109 @@ export default function ReflectionForm({ date, type, existing, onClose }: Props)
           <TextArea value={tryText} onChange={(e) => setTryText(e.target.value)} placeholder={type === 'weekly' ? '다음 주에 시도해볼 것...' : '다음에 시도해볼 것...'} rows={4} />
         </SectionCard>
 
-        {type === 'weekly' && weeklyStats && weeklyStats.routineData.length > 0 ? (
-          <>
-            <SectionCard
-              title="이번 주 루틴 현황"
-              subtitle="요일별 체크 흐름과 평균 이행률을 동시에 확인합니다."
-              action={<Badge tone="accent">평균 {weeklyStats.totalRate}%</Badge>}
-            >
-              <div className="data-grid">
-                <table className="data-grid__table">
-                  <thead>
-                    <tr>
-                      <th>루틴</th>
-                      {weeklyStats.weekDays.map((day) => (
-                        <th key={day.toISOString()}>{format(day, 'EEE', { locale: ko })}</th>
-                      ))}
-                      <th>달성</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {weeklyStats.routineData.map(({ routine, levels, rate }) => (
-                      <tr key={routine.id}>
-                        <td>
-                          <div className="flex items-center gap-2">
-                            {routine.icon ? <IconDisplay icon={routine.icon} size={15} /> : null}
-                            <span style={{ color: 'var(--ds-text-primary)', fontWeight: 600 }}>{routine.name}</span>
+        {/* ── 주간: 이번 주 루틴 현황 (통계탭 스타일) ── */}
+        {type === 'weekly' && weeklyStats && weeklyStats.routineData.length > 0 && (
+          <SectionCard
+            title="이번 주 루틴 현황"
+            subtitle="요일별 체크 흐름과 평균 이행률을 동시에 확인합니다."
+            action={<Badge tone="accent">평균 {weeklyStats.totalRate}%</Badge>}
+          >
+            <div className="overflow-x-auto" style={{ margin: '0 -2px', padding: '0 2px' }}>
+              <div style={{ minWidth: 300 }}>
+                {/* 요일 헤더 */}
+                <div className="flex mb-2">
+                  <div style={{ width: 76, flexShrink: 0 }} />
+                  <div className="flex flex-1 gap-1">
+                    {weeklyStats.weekDays.map((day) => {
+                      const isToday = formatDate(day) === weeklyStats.todayStr;
+                      return (
+                        <div key={day.toISOString()} className="flex-1 text-center">
+                          <div className="text-[11px] font-medium" style={{ color: isToday ? 'var(--ds-accent)' : 'var(--ds-text-tertiary)' }}>
+                            {format(day, 'EEE', { locale: ko })}
                           </div>
-                        </td>
-                        {levels.map((level, i) => (
-                          <td key={i}>
-                            <div
-                              className="mx-auto h-5 w-5 rounded-[8px]"
-                              style={{
-                                background: LEVEL_COLORS[level],
-                                boxShadow: formatDate(weeklyStats.weekDays[i]) === weeklyStats.todayStr ? '0 0 0 2px rgba(54, 90, 168, 0.22)' : 'none',
-                              }}
-                            />
-                          </td>
-                        ))}
-                        <td style={{ color: 'var(--ds-text-primary)', fontWeight: 700 }}>{rate}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Badge tone="default">미완료</Badge>
-                <Badge tone="success">Done</Badge>
-                <Badge tone="accent">More</Badge>
-                <Badge className="badge badge--default" >Max</Badge>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="루틴별 평가" subtitle="각 루틴에 대한 감정 평가와 개선 메모를 남깁니다.">
-              <div className="space-y-3">
-                {activeRoutines.map((routine) => {
-                  const evalState = routineEvals[routine.id];
-                  const rate = weeklyStats.routineData.find((r) => r.routine.id === routine.id)?.rate ?? 0;
-                  return (
-                    <div key={routine.id} className="card p-4">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2">
-                          {routine.icon ? <IconDisplay icon={routine.icon} size={16} /> : null}
-                          <span className="truncate text-[14px] font-semibold" style={{ color: 'var(--ds-text-primary)' }}>{routine.name}</span>
+                          <div className="text-[10px]" style={{ color: isToday ? 'var(--ds-accent)' : 'var(--ds-text-tertiary)', fontWeight: isToday ? 700 : 400 }}>
+                            {format(day, 'd')}
+                          </div>
                         </div>
-                        <Badge tone={rate >= 80 ? 'success' : rate >= 50 ? 'accent' : 'default'}>{rate}%</Badge>
+                      );
+                    })}
+                  </div>
+                  <div style={{ width: 34, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="text-[10px]" style={{ color: 'var(--ds-text-tertiary)' }}>달성</span>
+                  </div>
+                </div>
+
+                {/* 루틴별 행 */}
+                <div className="space-y-1.5">
+                  {weeklyStats.routineData.map(({ routine, levels, rate }) => (
+                    <div key={routine.id} className="flex items-center">
+                      <div style={{ width: 76, flexShrink: 0, paddingRight: 6 }}>
+                        <span className="text-[11px] font-medium truncate block" style={{ color: 'var(--ds-text-primary)' }}>
+                          {routine.name}
+                        </span>
                       </div>
-                      <div className="mb-3 grid grid-cols-3 gap-2">
-                        {EVAL_CONFIG.map(({ key, label, icon: Icon, color, bgColor, activeBg }) => (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => setEval(routine.id, key)}
-                            className="rounded-[18px] border px-3 py-2 text-[12px] font-semibold transition-all"
+                      <div className="flex flex-1 gap-1">
+                        {levels.map((level, i) => (
+                          <div
+                            key={i}
+                            className="flex-1 rounded-md"
                             style={{
-                              color: evalState?.evaluation === key ? color : 'var(--ds-text-secondary)',
-                              background: evalState?.evaluation === key ? activeBg : bgColor,
-                              borderColor: evalState?.evaluation === key ? color : 'transparent',
+                              height: 20,
+                              background: LEVEL_COLORS[level],
+                              boxShadow: formatDate(weeklyStats.weekDays[i]) === weeklyStats.todayStr ? '0 0 0 2px rgba(54,90,168,0.28)' : 'none',
                             }}
-                          >
-                            <span className="flex items-center justify-center gap-1">
-                              <Icon size={13} />
-                              {label}
-                            </span>
-                          </button>
+                          />
                         ))}
                       </div>
-                      {evalState?.evaluation ? (
-                        <TextArea
-                          value={evalState.improvement}
-                          onChange={(e) => setImprovement(routine.id, e.target.value)}
-                          placeholder="개선 방향 또는 메모..."
-                          rows={3}
-                        />
-                      ) : (
-                        <Notice>평가를 선택하면 개선 방향을 더 자세히 적을 수 있습니다.</Notice>
-                      )}
+                      <div style={{ width: 34, flexShrink: 0, textAlign: 'center' }}>
+                        <span className="text-[10px] font-bold" style={{ color: rate >= 80 ? 'var(--color-done)' : rate >= 50 ? 'var(--color-more)' : 'var(--ds-text-tertiary)' }}>
+                          {rate}%
+                        </span>
+                      </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {/* 날짜별 전체 이행률 */}
+                <div className="flex items-center mt-2 pt-2" style={{ borderTop: '1px solid var(--ds-border)' }}>
+                  <div style={{ width: 76, flexShrink: 0, paddingRight: 6 }}>
+                    <span className="text-[10px]" style={{ color: 'var(--ds-text-tertiary)' }}>전체 이행률</span>
+                  </div>
+                  <div className="flex flex-1 gap-1">
+                    {weeklyStats.dailyRates.map((rate, i) => (
+                      <div key={i} className="flex-1 text-center">
+                        {rate !== null ? (
+                          <span className="text-[10px] font-bold" style={{ color: rate >= 80 ? 'var(--color-done)' : rate >= 50 ? 'var(--color-more)' : 'var(--ds-text-tertiary)' }}>
+                            {rate}%
+                          </span>
+                        ) : (
+                          <span className="text-[10px]" style={{ color: 'var(--ds-text-tertiary)' }}>-</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ width: 34, flexShrink: 0 }} />
+                </div>
+
+                {/* 범례 */}
+                <div className="flex flex-wrap gap-3 mt-3 pt-3" style={{ borderTop: '1px solid var(--ds-border)' }}>
+                  {([
+                    { color: 'var(--ds-bg-tertiary)', label: '미완료' },
+                    { color: 'var(--color-done)',     label: 'Done' },
+                    { color: 'var(--color-more)',     label: 'More' },
+                    { color: 'var(--color-max)',      label: 'Max' },
+                  ] as const).map(({ color, label }) => (
+                    <div key={label} className="flex items-center gap-1.5">
+                      <div style={{ width: 10, height: 10, borderRadius: 3, background: color }} />
+                      <span className="text-[10px]" style={{ color: 'var(--ds-text-tertiary)' }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </SectionCard>
-          </>
-        ) : null}
+            </div>
+          </SectionCard>
+        )}
+
       </div>
     </Modal>
   );
