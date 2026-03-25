@@ -3,12 +3,21 @@ import { format, startOfWeek, addDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { X, Check } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
+import { IconDisplay } from '../settings/RoutineForm';
 import type { ScheduleBlock } from '../../types';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
-const CELL_H = 28; // px per hour row
+const CELL_H = 20; // px per hour row (70% of original 28px)
 const TIME_COL_W = 32; // px for time label column
+
+const MODES = [
+  { label: '육아', color: '#EC4899' },
+  { label: '일',   color: '#3B82F6' },
+  { label: '내 삶', color: '#22C55E' },
+  { label: '기타', color: '#A855F7' },
+];
+
 const COLOR_PRESETS = [
   '#EF4444', '#F97316', '#EAB308', '#22C55E',
   '#3B82F6', '#A855F7', '#EC4899', '#14B8A6',
@@ -18,8 +27,9 @@ type SelectState = { day: number; startHour: number } | null;
 type ModalState = { day: number; startHour: number; endHour: number; editId?: string } | null;
 
 export default function WeeklyTab() {
-  const routines = useRoutineStore(s => (s.routines ?? []).filter(r => !r.archived));
-  const scheduleBlocks = useRoutineStore(s => s.scheduleBlocks ?? []);
+  const allRoutines = useRoutineStore(s => s.routines);
+  const routines = (allRoutines ?? []).filter(r => !r.archived);
+  const scheduleBlocks = useRoutineStore(s => s.scheduleBlocks) ?? [];
   const addScheduleBlock = useRoutineStore(s => s.addScheduleBlock);
   const updateScheduleBlock = useRoutineStore(s => s.updateScheduleBlock);
   const deleteScheduleBlock = useRoutineStore(s => s.deleteScheduleBlock);
@@ -27,7 +37,7 @@ export default function WeeklyTab() {
   const [selectStart, setSelectStart] = useState<SelectState>(null);
   const [hoverHour, setHoverHour] = useState<number | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
-  const [formColor, setFormColor] = useState(COLOR_PRESETS[4]);
+  const [formColor, setFormColor] = useState(MODES[0].color);
   const [formLabel, setFormLabel] = useState('');
   const [formRoutines, setFormRoutines] = useState<string[]>([]);
   const [detailBlock, setDetailBlock] = useState<ScheduleBlock | null>(null);
@@ -56,7 +66,7 @@ export default function WeeklyTab() {
       setModal({ day, startHour: start, endHour: end });
       setSelectStart(null);
       setHoverHour(null);
-      setFormColor(COLOR_PRESETS[4]);
+      setFormColor(MODES[0].color);
       setFormLabel('');
       setFormRoutines([]);
     } else {
@@ -224,7 +234,7 @@ export default function WeeklyTab() {
                             className="text-[8px] px-1 truncate leading-tight"
                             style={{ color: 'rgba(255,255,255,0.85)' }}
                           >
-                            {r.icon} {r.name}
+                            {r.name}
                           </p>
                         ) : null;
                       })}
@@ -285,10 +295,11 @@ export default function WeeklyTab() {
                       return r ? (
                         <span
                           key={id}
-                          className="text-xs px-2 py-1 rounded-full"
+                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
                           style={{ background: 'var(--ds-bg-secondary)', color: 'var(--ds-text-primary)' }}
                         >
-                          {r.icon} {r.name}
+                          <IconDisplay icon={r.icon} size={12} />
+                          {r.name}
                         </span>
                       ) : null;
                     })}
@@ -339,16 +350,34 @@ export default function WeeklyTab() {
                 {String(modal.endHour).padStart(2, '0')}:00
               </p>
 
-              {/* Label input */}
+              {/* Mode selection */}
               <div className="field" style={{ marginBottom: 16 }}>
-                <label className="field__label">키워드 / 제목</label>
-                <input
-                  className="input"
-                  type="text"
-                  value={formLabel}
-                  onChange={e => setFormLabel(e.target.value)}
-                  placeholder="예: 운동, 공부, 휴식..."
-                />
+                <label className="field__label">모드</label>
+                <div className="flex gap-2 flex-wrap" style={{ marginTop: 6 }}>
+                  {MODES.map(m => {
+                    const sel = formLabel === m.label;
+                    return (
+                      <button
+                        key={m.label}
+                        className="text-sm font-medium"
+                        style={{
+                          padding: '5px 14px',
+                          borderRadius: 999,
+                          background: sel ? m.color : 'var(--ds-bg-secondary)',
+                          color: sel ? '#fff' : 'var(--ds-text-secondary)',
+                          border: `1.5px solid ${sel ? m.color : 'var(--ds-border)'}`,
+                          transition: 'all 0.15s',
+                        }}
+                        onClick={() => {
+                          setFormLabel(m.label);
+                          setFormColor(m.color);
+                        }}
+                      >
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Color picker */}
@@ -397,7 +426,7 @@ export default function WeeklyTab() {
                             )
                           }
                         >
-                          <span>{r.icon}</span>
+                          <IconDisplay icon={r.icon} size={12} />
                           <span>{r.name}</span>
                           {sel && <Check size={10} />}
                         </button>
