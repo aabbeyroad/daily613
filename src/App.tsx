@@ -7,6 +7,7 @@ import TodayTab from './components/today/TodayTab';
 import { Loader2, X, AlertTriangle } from 'lucide-react';
 import { Notice } from './components/ui/primitives';
 
+const WeeklyTab = lazy(() => import('./components/weekly/WeeklyTab'));
 const TrackingTab = lazy(() => import('./components/tracking/TrackingTab'));
 const StatsTab = lazy(() => import('./components/stats/StatsTab'));
 const ReflectionTab = lazy(() => import('./components/reflection/ReflectionTab'));
@@ -99,6 +100,7 @@ export default function App() {
           <TodayTab />
         ) : (
           <Suspense fallback={<AppSectionFallback />}>
+            {activeTab === 'weekly' && <WeeklyTab />}
             {activeTab === 'tracking' && <TrackingTab />}
             {activeTab === 'stats' && <StatsTab />}
             {activeTab === 'reflection' && <ReflectionTab />}
