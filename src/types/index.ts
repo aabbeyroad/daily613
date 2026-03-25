@@ -57,3 +57,13 @@ export interface AppSettings {
   username: string;
   colorTheme?: ColorTheme;
 }
+
+export interface ScheduleBlock {
+  id: string;
+  dayOfWeek: number; // 0=Mon, 1=Tue, ..., 6=Sun
+  startHour: number; // 0-23
+  endHour: number;   // 1-24 (exclusive end)
+  color: string;
+  label: string;
+  routineIds: string[];
+}

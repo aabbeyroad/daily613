@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Routine, DailyRecord, Reflection, AppSettings, CheckLevel, TabType, TimeEntry } from '../types';
+import type { Routine, DailyRecord, Reflection, AppSettings, CheckLevel, TabType, TimeEntry, ScheduleBlock } from '../types';
 import { formatDate } from '../utils/date';
 import { getUserData, saveUserData, type UserData } from '../lib/firestore';
 
@@ -46,6 +46,11 @@ interface RoutineStore {
   removeKeyword: (keyword: string) => void;
   updateSettings: (settings: Partial<AppSettings>) => void;
 
+  scheduleBlocks: ScheduleBlock[];
+  addScheduleBlock: (block: Omit<ScheduleBlock, 'id'>) => void;
+  updateScheduleBlock: (id: string, updates: Partial<Omit<ScheduleBlock, 'id'>>) => void;
+  deleteScheduleBlock: (id: string) => void;
+
   getFilteredRoutines: () => Routine[];
   getDailyRate: (date: string, filteredOnly?: boolean) => number;
   getWeeklyRate: (startDate: string, endDate: string, filteredOnly?: boolean) => number;
@@ -89,6 +94,7 @@ export const useRoutineStore = create<RoutineStore>()((set, get) => ({
   reflections: [],
   timeEntries: [],
   keywords: [],
+  scheduleBlocks: [],
   activeTab: 'today',
   selectedKeyword: null,
   settings: defaultSettings,
@@ -111,6 +117,7 @@ export const useRoutineStore = create<RoutineStore>()((set, get) => ({
         reflections: data.reflections || [],
         timeEntries: data.timeEntries || [],
         keywords: data.keywords || [],
+        scheduleBlocks: data.scheduleBlocks || [],
         settings: data.settings || defaultSettings,
         isLoading: false,
       });
@@ -295,6 +302,28 @@ export const useRoutineStore = create<RoutineStore>()((set, get) => ({
     const updated = { ...settings, ...newSettings };
     set({ settings: updated });
     syncToFirestore(userId, { settings: updated }, (err) => set({ syncError: err }));
+  },
+
+  addScheduleBlock: (block) => {
+    const { userId, scheduleBlocks } = get();
+    const newBlock: ScheduleBlock = { ...block, id: generateId() };
+    const newBlocks = [...scheduleBlocks, newBlock];
+    set({ scheduleBlocks: newBlocks });
+    syncToFirestore(userId, { scheduleBlocks: newBlocks }, (err) => set({ syncError: err }));
+  },
+
+  updateScheduleBlock: (id, updates) => {
+    const { userId, scheduleBlocks } = get();
+    const newBlocks = scheduleBlocks.map(b => b.id === id ? { ...b, ...updates } : b);
+    set({ scheduleBlocks: newBlocks });
+    syncToFirestore(userId, { scheduleBlocks: newBlocks }, (err) => set({ syncError: err }));
+  },
+
+  deleteScheduleBlock: (id) => {
+    const { userId, scheduleBlocks } = get();
+    const newBlocks = scheduleBlocks.filter(b => b.id !== id);
+    set({ scheduleBlocks: newBlocks });
+    syncToFirestore(userId, { scheduleBlocks: newBlocks }, (err) => set({ syncError: err }));
   },
 
   getFilteredRoutines: () => {
