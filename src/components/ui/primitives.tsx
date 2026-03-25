@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
+import { createPortal } from 'react-dom';
 
 function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(' ');
@@ -238,7 +239,7 @@ export function Modal({
 }: ModalProps) {
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className={cx('modal-sheet', `modal-sheet--${size}`)} onClick={(e) => e.stopPropagation()}>
         <div className="modal-sheet__header">
@@ -250,7 +251,8 @@ export function Modal({
         <div className="modal-sheet__content">{children}</div>
         {footer ? <div className="modal-sheet__footer">{footer}</div> : null}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
