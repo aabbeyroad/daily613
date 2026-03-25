@@ -237,7 +237,7 @@ export default function WeeklyTab() {
     <div onMouseLeave={cancelDrag} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
 
       {/* ━━━ 섹션 1: 오늘의 모드 배치표 ━━━ */}
-      <div className="px-1 pt-3 pb-1">
+      <div className="mx-3 mt-3 mb-1 p-4 rounded-2xl" style={{ background: 'var(--ds-bg-secondary)', border: '1px solid var(--ds-border)' }}>
         <h2 className="text-base font-bold mb-2" style={{ color: 'var(--ds-text-primary)' }}>
           오늘의 모드 배치표
           <span className="text-xs font-normal ml-2" style={{ color: 'var(--ds-text-tertiary)' }}>
@@ -305,7 +305,7 @@ export default function WeeklyTab() {
       </div>
 
       {/* 구분선 */}
-      <div style={{ height: 1, background: 'var(--ds-border)', margin: '12px 0 0' }} />
+      <div style={{ height: 1, background: 'var(--ds-border)', margin: '14px 0 0' }} />
 
       {/* ━━━ 섹션 2: 주간 모드 배치표 ━━━ */}
       <div className="px-1 pt-2 pb-1 flex items-center justify-between">
@@ -388,8 +388,8 @@ export default function WeeklyTab() {
                     top: topSlot * CELL_H + 1,
                     height: spanSlots * CELL_H - 2,
                     left: 1, right: 1,
-                    backgroundColor: block.color + 'BB',
-                    borderLeft: `3px solid ${block.color}`,
+                    backgroundColor: block.color + '55',
+                    borderLeft: `3px solid ${block.color + 'CC'}`,
                     borderRadius: 4, overflow: 'hidden', cursor: 'pointer',
                   }}
                   onClick={e => { e.stopPropagation(); setDetailBlock(block); }}

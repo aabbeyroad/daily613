@@ -295,7 +295,7 @@ export default function ReflectionForm({ date, type, existing, onClose }: Props)
                         value={evalState.improvement}
                         onChange={(e) => setImprovement(routine.id, e.target.value)}
                         placeholder=""
-                        rows={2}
+                        rows={1}
                       />
                     ) : (
                       <Notice>평가를 선택하면 개선 방향을 더 자세히 적을 수 있습니다.</Notice>
