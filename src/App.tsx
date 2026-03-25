@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, Component, type ReactNode } from 'react';
 import { useRoutineStore } from './stores/routineStore';
 import { useTheme } from './hooks/useTheme';
 import { useAuth } from './contexts/AuthContext';
@@ -14,6 +14,33 @@ const ReflectionTab = lazy(() => import('./components/reflection/ReflectionTab')
 const SettingsTab = lazy(() => import('./components/settings/SettingsTab'));
 const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const DailyReviewPopup = lazy(() => import('./components/common/DailyReviewPopup'));
+
+class TabErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex min-h-[40dvh] flex-col items-center justify-center gap-3 px-4">
+          <AlertTriangle size={28} style={{ color: 'var(--ds-danger)' }} />
+          <p className="text-sm text-center" style={{ color: 'var(--ds-text-secondary)' }}>
+            화면을 불러오지 못했습니다.<br />
+            <span className="text-xs" style={{ color: 'var(--ds-text-tertiary)' }}>
+              {(this.state.error as Error).message}
+            </span>
+          </p>
+          <button
+            className="button button--secondary button--sm"
+            onClick={() => this.setState({ error: null })}
+          >
+            다시 시도
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function SyncErrorBanner() {
   const syncError = useRoutineStore((s) => s.syncError);
@@ -99,13 +126,15 @@ export default function App() {
         {activeTab === 'today' ? (
           <TodayTab />
         ) : (
-          <Suspense fallback={<AppSectionFallback />}>
-            {activeTab === 'weekly' && <WeeklyTab />}
-            {activeTab === 'tracking' && <TrackingTab />}
-            {activeTab === 'stats' && <StatsTab />}
-            {activeTab === 'reflection' && <ReflectionTab />}
-            {activeTab === 'settings' && <SettingsTab />}
-          </Suspense>
+          <TabErrorBoundary>
+            <Suspense fallback={<AppSectionFallback />}>
+              {activeTab === 'weekly' && <WeeklyTab />}
+              {activeTab === 'tracking' && <TrackingTab />}
+              {activeTab === 'stats' && <StatsTab />}
+              {activeTab === 'reflection' && <ReflectionTab />}
+              {activeTab === 'settings' && <SettingsTab />}
+            </Suspense>
+          </TabErrorBoundary>
         )}
       </Layout>
     </>
