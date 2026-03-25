@@ -18,8 +18,9 @@ type SelectState = { day: number; startHour: number } | null;
 type ModalState = { day: number; startHour: number; endHour: number; editId?: string } | null;
 
 export default function WeeklyTab() {
-  const routines = useRoutineStore(s => (s.routines ?? []).filter(r => !r.archived));
-  const scheduleBlocks = useRoutineStore(s => s.scheduleBlocks ?? []);
+  const allRoutines = useRoutineStore(s => s.routines);
+  const routines = (allRoutines ?? []).filter(r => !r.archived);
+  const scheduleBlocks = useRoutineStore(s => s.scheduleBlocks) ?? [];
   const addScheduleBlock = useRoutineStore(s => s.addScheduleBlock);
   const updateScheduleBlock = useRoutineStore(s => s.updateScheduleBlock);
   const deleteScheduleBlock = useRoutineStore(s => s.deleteScheduleBlock);
