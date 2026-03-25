@@ -1,6 +1,6 @@
 export type CheckLevel = 'none' | 'done' | 'more' | 'max';
 
-export type TabType = 'today' | 'tracking' | 'stats' | 'reflection' | 'settings';
+export type TabType = 'today' | 'weekly' | 'tracking' | 'stats' | 'reflection' | 'settings';
 
 export type ColorTheme = 'indigo' | 'rose' | 'emerald' | 'amber' | 'sky' | 'violet';
 
@@ -56,4 +56,14 @@ export interface AppSettings {
   darkMode: boolean;
   username: string;
   colorTheme?: ColorTheme;
+}
+
+export interface ScheduleBlock {
+  id: string;
+  dayOfWeek: number; // 0=Mon, 1=Tue, ..., 6=Sun
+  startHour: number; // 0-23
+  endHour: number;   // 1-24 (exclusive end)
+  color: string;
+  label: string;
+  routineIds: string[];
 }
