@@ -1,6 +1,6 @@
 export type CheckLevel = 'none' | 'done' | 'more' | 'max';
 
-export type TabType = 'today' | 'tracking' | 'stats' | 'reflection' | 'settings';
+export type TabType = 'today' | 'weekly' | 'tracking' | 'stats' | 'reflection' | 'settings';
 
 export type ColorTheme = 'indigo' | 'rose' | 'emerald' | 'amber' | 'sky' | 'violet';
 

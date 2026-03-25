@@ -1,9 +1,10 @@
-import { CalendarCheck, Timer, BarChart3, BookOpen, Settings } from 'lucide-react';
+import { CalendarCheck, CalendarDays, Timer, BarChart3, BookOpen, Settings } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
 import type { TabType } from '../../types';
 
 const tabs: { id: TabType; label: string; icon: typeof CalendarCheck }[] = [
   { id: 'today', label: '오늘', icon: CalendarCheck },
+  { id: 'weekly', label: '주간', icon: CalendarDays },
   { id: 'tracking', label: '트래킹', icon: Timer },
   { id: 'stats', label: '통계', icon: BarChart3 },
   { id: 'reflection', label: '회고', icon: BookOpen },
@@ -25,7 +26,7 @@ export default function TabBar() {
             aria-current={activeTab === id ? 'page' : undefined}
             className={`bottom-nav__button ${activeTab === id ? 'bottom-nav__button--active' : ''}`}
           >
-            <Icon size={22} strokeWidth={activeTab === id ? 2.5 : 1.8} />
+            <Icon size={18} strokeWidth={activeTab === id ? 2.5 : 1.8} />
             <span className="bottom-nav__label">{label}</span>
           </button>
         ))}
