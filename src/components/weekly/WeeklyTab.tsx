@@ -1,17 +1,17 @@
 import { useState, useRef } from 'react';
 import { format, startOfWeek, addDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Check, ChevronLeft, ChevronRight, ChevronLeft as Back } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
 import { IconDisplay } from '../settings/RoutineForm';
 import type { ScheduleBlock } from '../../types';
 
-// 오전 3시부터 시작: [3,4,...,23,0,1,2]
-const HOURS = Array.from({ length: 24 }, (_, i) => (i + 3) % 24);
-const hourToRow = (h: number) => (h - 3 + 24) % 24;
+// 오전 3시부터 자정까지: [3,4,...,23]
+const HOURS = Array.from({ length: 21 }, (_, i) => i + 3);
+const hourToRow = (h: number) => h - 3;
 
 const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
-const CELL_H = 22;       // px per hour row
+const CELL_H = 24;       // px per hour row
 const TIME_COL_W = 32;   // px for time label column
 
 const MODES = [
@@ -27,20 +27,26 @@ const COLOR_PRESETS = [
 ];
 
 const REPEAT_OPTIONS = [
-  { key: 'daily',    label: '매일 (1일 단위)',      days: [0, 1, 2, 3, 4, 5, 6] },
-  { key: 'weekday',  label: '평일마다 (월~금)',      days: [0, 1, 2, 3, 4] },
-  { key: 'weekend',  label: '주말마다 (토~일)',      days: [5, 6] },
-  { key: 'weekly',   label: '매주 (이 요일만 유지)', days: [] },
+  { key: 'daily',   label: '매일 (1일 단위)',      days: [0, 1, 2, 3, 4, 5, 6] },
+  { key: 'weekday', label: '평일마다 (월~금)',      days: [0, 1, 2, 3, 4] },
+  { key: 'weekend', label: '주말마다 (토~일)',      days: [5, 6] },
+  { key: 'weekly',  label: '매주 (이 요일만 유지)', days: [] },
 ];
 
-type SelectState   = { day: number; startHour: number } | null;
-type ModalState    = { day: number; startHour: number; endHour: number; editId?: string } | null;
-type RepeatModal   = { dayOfWeek: number } | null;
+const SCOPE_OPTIONS = [
+  { key: 'today',   label: '오늘만',    desc: '이번 주에만 적용' },
+  { key: 'from',    label: '오늘부터',  desc: '오늘 이후로 계속 적용' },
+  { key: 'all',     label: '전체기간',  desc: '모든 주에 적용' },
+];
+
+type SelectState = { day: number; startHour: number } | null;
+type ModalState  = { day: number; startHour: number; endHour: number; editId?: string } | null;
+type RepeatModal = { dayOfWeek: number; pendingOptionKey?: string } | null;
 
 export default function WeeklyTab() {
-  const allRoutines      = useRoutineStore(s => s.routines);
-  const routines         = (allRoutines ?? []).filter(r => !r.archived);
-  const scheduleBlocks   = useRoutineStore(s => s.scheduleBlocks) ?? [];
+  const allRoutines         = useRoutineStore(s => s.routines);
+  const routines            = (allRoutines ?? []).filter(r => !r.archived);
+  const scheduleBlocks      = useRoutineStore(s => s.scheduleBlocks) ?? [];
   const addScheduleBlock    = useRoutineStore(s => s.addScheduleBlock);
   const updateScheduleBlock = useRoutineStore(s => s.updateScheduleBlock);
   const deleteScheduleBlock = useRoutineStore(s => s.deleteScheduleBlock);
@@ -49,11 +55,11 @@ export default function WeeklyTab() {
   const [weekOffset, setWeekOffset] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
-  const today           = new Date();
+  const today            = new Date();
   const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
-  const weekStart       = addDays(currentWeekStart, weekOffset * 7);
-  const weekDays        = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const weekLabel       = `${format(weekDays[0], 'M월 d일', { locale: ko })} – ${format(weekDays[6], 'M월 d일', { locale: ko })}`;
+  const weekStart        = addDays(currentWeekStart, weekOffset * 7);
+  const weekDays         = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const weekLabel        = `${format(weekDays[0], 'M월 d일', { locale: ko })} – ${format(weekDays[6], 'M월 d일', { locale: ko })}`;
 
   const goWeek = (delta: number) => {
     setWeekOffset(prev => prev + delta);
@@ -74,14 +80,56 @@ export default function WeeklyTab() {
     }
   };
 
-  // ── 셀 선택 ────────────────────────────────────────
+  // ── 셀 선택 (클릭 + 드래그) ────────────────────────
   const [selectStart, setSelectStart] = useState<SelectState>(null);
   const [hoverHour,   setHoverHour]   = useState<number | null>(null);
+
+  const isDragging         = useRef(false);
+  const justCompletedDrag  = useRef(false);
 
   const getBlockAtCell = (day: number, hour: number) =>
     scheduleBlocks.find(b => b.dayOfWeek === day && hour >= b.startHour && hour < b.endHour);
 
+  const openModal = (day: number, startH: number, endH: number) => {
+    setModal({ day, startHour: startH, endHour: endH });
+    setSelectStart(null);
+    setHoverHour(null);
+    setFormColor(MODES[0].color);
+    setFormLabel('');
+    setFormRoutines([]);
+  };
+
+  // 드래그 시작
+  const handleCellMouseDown = (day: number, hour: number) => {
+    if (getBlockAtCell(day, hour)) return;
+    isDragging.current = true;
+    setSelectStart({ day, startHour: hour });
+    setHoverHour(hour);
+  };
+
+  // 드래그 완료
+  const handleCellMouseUp = (day: number) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    if (!selectStart || selectStart.day !== day) {
+      setSelectStart(null);
+      setHoverHour(null);
+      return;
+    }
+    const movedCells = hoverHour !== null && hoverHour !== selectStart.startHour;
+    if (movedCells) {
+      justCompletedDrag.current = true;
+      const start = Math.min(selectStart.startHour, hoverHour!);
+      const end   = Math.max(selectStart.startHour, hoverHour!) + 1;
+      openModal(day, start, end);
+      setTimeout(() => { justCompletedDrag.current = false; }, 100);
+    }
+    // 이동 없으면 onClick이 처리
+  };
+
+  // 클릭 (탭 포함)
   const handleCellClick = (day: number, hour: number) => {
+    if (justCompletedDrag.current) return;
     const existing = getBlockAtCell(day, hour);
     if (existing) {
       setDetailBlock(existing);
@@ -94,12 +142,7 @@ export default function WeeklyTab() {
     } else if (selectStart.day === day) {
       const start = Math.min(selectStart.startHour, hour);
       const end   = Math.max(selectStart.startHour, hour) + 1;
-      setModal({ day, startHour: start, endHour: end });
-      setSelectStart(null);
-      setHoverHour(null);
-      setFormColor(MODES[0].color);
-      setFormLabel('');
-      setFormRoutines([]);
+      openModal(day, start, end);
     } else {
       setSelectStart({ day, startHour: hour });
       setHoverHour(null);
@@ -115,11 +158,11 @@ export default function WeeklyTab() {
   };
 
   // ── 블록 편집 모달 ──────────────────────────────────
-  const [modal,       setModal]       = useState<ModalState>(null);
-  const [formColor,   setFormColor]   = useState(MODES[0].color);
-  const [formLabel,   setFormLabel]   = useState('');
+  const [modal,        setModal]        = useState<ModalState>(null);
+  const [formColor,    setFormColor]    = useState(MODES[0].color);
+  const [formLabel,    setFormLabel]    = useState('');
   const [formRoutines, setFormRoutines] = useState<string[]>([]);
-  const [detailBlock, setDetailBlock] = useState<ScheduleBlock | null>(null);
+  const [detailBlock,  setDetailBlock]  = useState<ScheduleBlock | null>(null);
 
   const saveBlock = () => {
     if (!modal) return;
@@ -174,14 +217,14 @@ export default function WeeklyTab() {
   // ── 렌더 ────────────────────────────────────────────
   return (
     <div
-      onMouseLeave={() => setHoverHour(null)}
+      onMouseLeave={() => { setHoverHour(null); isDragging.current = false; }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
       {/* 헤더 */}
       <div className="px-1 pt-2 pb-2 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--ds-text-primary)' }}>주간 일정표</h1>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--ds-text-primary)' }}>주간 모드 배치표</h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--ds-text-tertiary)' }}>{weekLabel}</p>
         </div>
         <div className="flex items-center gap-1">
@@ -251,7 +294,11 @@ export default function WeeklyTab() {
 
         {/* 요일 컬럼 */}
         {Array.from({ length: 7 }, (_, day) => (
-          <div key={day} className="flex-1 relative" style={{ borderLeft: '1px solid var(--ds-border)' }}>
+          <div
+            key={day}
+            className="flex-1 relative"
+            style={{ borderLeft: '1px solid var(--ds-border)' }}
+          >
             {/* 셀 */}
             {HOURS.map((h, i) => (
               <div
@@ -262,9 +309,15 @@ export default function WeeklyTab() {
                   borderBottom:
                     i % 6 === 5 ? '1px dashed var(--ds-border)' :
                     i % 3 === 2 ? '1px solid rgba(122,136,164,0.07)' : 'none',
+                  userSelect: 'none',
+                }}
+                onMouseDown={() => handleCellMouseDown(day, h)}
+                onMouseUp={() => handleCellMouseUp(day)}
+                onMouseEnter={() => {
+                  if (isDragging.current && selectStart?.day === day) setHoverHour(h);
+                  else if (selectStart?.day === day) setHoverHour(h);
                 }}
                 onClick={() => handleCellClick(day, h)}
-                onMouseEnter={() => { if (selectStart?.day === day) setHoverHour(h); }}
               />
             ))}
 
@@ -312,7 +365,7 @@ export default function WeeklyTab() {
       {selectStart && (
         <div className="fixed bottom-24 left-0 right-0 flex justify-center pointer-events-none z-20">
           <div className="text-xs px-4 py-2 rounded-full" style={{ background: 'rgba(0,0,0,0.72)', color: '#fff' }}>
-            종료 셀을 탭하여 범위 완성
+            종료 셀을 탭하거나 드래그하여 범위 완성
           </div>
         </div>
       )}
@@ -322,29 +375,69 @@ export default function WeeklyTab() {
         <div className="modal-backdrop" onClick={() => setRepeatModal(null)}>
           <div className="modal-sheet w-full" onClick={e => e.stopPropagation()}>
             <div className="modal-sheet__header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 className="modal-sheet__title" style={{ fontSize: 18 }}>
-                {DAY_LABELS[repeatModal.dayOfWeek]}요일 반복 설정
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {repeatModal.pendingOptionKey && (
+                  <button
+                    onClick={() => setRepeatModal({ dayOfWeek: repeatModal.dayOfWeek })}
+                    style={{ color: 'var(--ds-text-tertiary)', marginRight: 2 }}
+                  >
+                    <Back size={18} />
+                  </button>
+                )}
+                <h3 className="modal-sheet__title" style={{ fontSize: 18 }}>
+                  {repeatModal.pendingOptionKey
+                    ? `${DAY_LABELS[repeatModal.dayOfWeek]}요일 적용 범위`
+                    : `${DAY_LABELS[repeatModal.dayOfWeek]}요일 반복 설정`}
+                </h3>
+              </div>
               <button onClick={() => setRepeatModal(null)} style={{ color: 'var(--ds-text-tertiary)' }}>
                 <X size={18} />
               </button>
             </div>
+
             <div className="modal-sheet__content" style={{ paddingTop: 0 }}>
-              <p className="text-xs mb-4" style={{ color: 'var(--ds-text-secondary)' }}>
-                {DAY_LABELS[repeatModal.dayOfWeek]}요일의 일정을 아래 단위로 복사합니다.
-              </p>
-              <div className="flex flex-col gap-2">
-                {REPEAT_OPTIONS.map(opt => (
-                  <button
-                    key={opt.key}
-                    className="text-sm font-medium text-left px-4 py-3 rounded-xl"
-                    style={{ background: 'var(--ds-bg-secondary)', color: 'var(--ds-text-primary)', border: '1px solid var(--ds-border)' }}
-                    onClick={() => applyRepeat(repeatModal.dayOfWeek, opt.key)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              {/* 1단계: 반복 패턴 선택 */}
+              {!repeatModal.pendingOptionKey && (
+                <>
+                  <p className="text-xs mb-4" style={{ color: 'var(--ds-text-secondary)' }}>
+                    {DAY_LABELS[repeatModal.dayOfWeek]}요일의 일정을 아래 단위로 복사합니다.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {REPEAT_OPTIONS.map(opt => (
+                      <button
+                        key={opt.key}
+                        className="text-sm font-medium text-left px-4 py-3 rounded-xl"
+                        style={{ background: 'var(--ds-bg-secondary)', color: 'var(--ds-text-primary)', border: '1px solid var(--ds-border)' }}
+                        onClick={() => setRepeatModal({ dayOfWeek: repeatModal.dayOfWeek, pendingOptionKey: opt.key })}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* 2단계: 적용 범위 선택 */}
+              {repeatModal.pendingOptionKey && (
+                <>
+                  <p className="text-xs mb-4" style={{ color: 'var(--ds-text-secondary)' }}>
+                    「{REPEAT_OPTIONS.find(o => o.key === repeatModal.pendingOptionKey)?.label}」을 어느 기간에 적용할까요?
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {SCOPE_OPTIONS.map(scope => (
+                      <button
+                        key={scope.key}
+                        className="text-left px-4 py-3 rounded-xl"
+                        style={{ background: 'var(--ds-bg-secondary)', border: '1px solid var(--ds-border)' }}
+                        onClick={() => applyRepeat(repeatModal.dayOfWeek, repeatModal.pendingOptionKey!)}
+                      >
+                        <div className="text-sm font-medium" style={{ color: 'var(--ds-text-primary)' }}>{scope.label}</div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--ds-text-tertiary)' }}>{scope.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -376,8 +469,11 @@ export default function WeeklyTab() {
                     {detailBlock.routineIds.map(id => {
                       const r = routines.find(r => r.id === id);
                       return r ? (
-                        <span key={id} className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
-                          style={{ background: 'var(--ds-bg-secondary)', color: 'var(--ds-text-primary)' }}>
+                        <span
+                          key={id}
+                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+                          style={{ background: 'var(--ds-bg-secondary)', color: 'var(--ds-text-primary)' }}
+                        >
                           <IconDisplay icon={r.icon} size={12} />
                           {r.name}
                         </span>
