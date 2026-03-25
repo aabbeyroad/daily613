@@ -39,9 +39,9 @@ const SCOPE_OPTIONS = [
   { key: 'all',     label: '전체기간',  desc: '모든 주에 적용' },
 ];
 
-type SelectState = { day: number; startHour: number } | null;
-type ModalState  = { day: number; startHour: number; endHour: number; editId?: string } | null;
-type RepeatModal = { dayOfWeek: number; pendingOptionKey?: string } | null;
+type ClickSelectState = { day: number; startHour: number } | null;
+type ModalState       = { day: number; startHour: number; endHour: number; editId?: string } | null;
+type RepeatModal      = { dayOfWeek: number; pendingOptionKey?: string } | null;
 
 export default function WeeklyTab() {
   const allRoutines         = useRoutineStore(s => s.routines);
@@ -63,8 +63,8 @@ export default function WeeklyTab() {
 
   const goWeek = (delta: number) => {
     setWeekOffset(prev => prev + delta);
-    setSelectStart(null);
-    setHoverHour(null);
+    setClickSelectStart(null);
+    cancelDrag();
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -75,119 +75,123 @@ export default function WeeklyTab() {
     if (touchStartX.current === null) return;
     const delta = e.changedTouches[0].clientX - touchStartX.current;
     touchStartX.current = null;
-    if (Math.abs(delta) > 60) {
-      goWeek(delta < 0 ? 1 : -1);
+    if (Math.abs(delta) > 60) goWeek(delta < 0 ? 1 : -1);
+  };
+
+  // ── 드래그 선택 ─────────────────────────────────────
+  const dragOriginRef    = useRef<{ day: number; hour: number } | null>(null);
+  const isDraggingRef    = useRef(false);
+  const justFinishedDrag = useRef(false);
+
+  const [dragHighlight, setDragHighlight] = useState<{
+    day: number; lo: number; hi: number;
+  } | null>(null);
+
+  const cancelDrag = () => {
+    dragOriginRef.current = null;
+    isDraggingRef.current = false;
+    setDragHighlight(null);
+  };
+
+  const handleCellMouseDown = (day: number, hour: number) => {
+    if (getBlockAtCell(day, hour)) return;
+    dragOriginRef.current = { day, hour };
+    isDraggingRef.current = false;
+    setDragHighlight({ day, lo: hour, hi: hour });
+  };
+
+  const handleCellMouseEnter = (day: number, hour: number) => {
+    const origin = dragOriginRef.current;
+    if (!origin || origin.day !== day) return;
+    isDraggingRef.current = true;
+    setDragHighlight({ day, lo: Math.min(origin.hour, hour), hi: Math.max(origin.hour, hour) });
+  };
+
+  const handleCellMouseUp = (day: number, hour: number) => {
+    const origin = dragOriginRef.current;
+    if (!origin) return;
+    if (isDraggingRef.current && origin.day === day) {
+      const startH = Math.min(origin.hour, hour);
+      const endH   = Math.max(origin.hour, hour) + 1;
+      cancelDrag();
+      justFinishedDrag.current = true;
+      openModal(day, startH, endH);
+      setTimeout(() => { justFinishedDrag.current = false; }, 100);
+    } else {
+      cancelDrag();
     }
   };
 
-  // ── 셀 선택 (클릭 + 드래그) ────────────────────────
-  const [selectStart, setSelectStart] = useState<SelectState>(null);
-  const [hoverHour,   setHoverHour]   = useState<number | null>(null);
-
-  const isDragging         = useRef(false);
-  const justCompletedDrag  = useRef(false);
+  // ── 클릭 2탭 선택 ─────────────────────────────────
+  const [clickSelectStart, setClickSelectStart] = useState<ClickSelectState>(null);
 
   const getBlockAtCell = (day: number, hour: number) =>
     scheduleBlocks.find(b => b.dayOfWeek === day && hour >= b.startHour && hour < b.endHour);
 
-  const openModal = (day: number, startH: number, endH: number) => {
-    setModal({ day, startHour: startH, endHour: endH });
-    setSelectStart(null);
-    setHoverHour(null);
-    setFormColor(MODES[0].color);
-    setFormLabel('');
-    setFormRoutines([]);
-  };
-
-  // 드래그 시작
-  const handleCellMouseDown = (day: number, hour: number) => {
-    if (getBlockAtCell(day, hour)) return;
-    isDragging.current = true;
-    setSelectStart({ day, startHour: hour });
-    setHoverHour(hour);
-  };
-
-  // 드래그 완료
-  const handleCellMouseUp = (day: number) => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    if (!selectStart || selectStart.day !== day) {
-      setSelectStart(null);
-      setHoverHour(null);
-      return;
-    }
-    const movedCells = hoverHour !== null && hoverHour !== selectStart.startHour;
-    if (movedCells) {
-      justCompletedDrag.current = true;
-      const start = Math.min(selectStart.startHour, hoverHour!);
-      const end   = Math.max(selectStart.startHour, hoverHour!) + 1;
-      openModal(day, start, end);
-      setTimeout(() => { justCompletedDrag.current = false; }, 100);
-    }
-    // 이동 없으면 onClick이 처리
-  };
-
-  // 클릭 (탭 포함)
   const handleCellClick = (day: number, hour: number) => {
-    if (justCompletedDrag.current) return;
+    if (justFinishedDrag.current) return;
     const existing = getBlockAtCell(day, hour);
     if (existing) {
       setDetailBlock(existing);
-      setSelectStart(null);
-      setHoverHour(null);
+      setClickSelectStart(null);
       return;
     }
-    if (!selectStart) {
-      setSelectStart({ day, startHour: hour });
-    } else if (selectStart.day === day) {
-      const start = Math.min(selectStart.startHour, hour);
-      const end   = Math.max(selectStart.startHour, hour) + 1;
+    if (!clickSelectStart) {
+      setClickSelectStart({ day, startHour: hour });
+    } else if (clickSelectStart.day === day) {
+      const start = Math.min(clickSelectStart.startHour, hour);
+      const end   = Math.max(clickSelectStart.startHour, hour) + 1;
       openModal(day, start, end);
     } else {
-      setSelectStart({ day, startHour: hour });
-      setHoverHour(null);
+      setClickSelectStart({ day, startHour: hour });
     }
   };
 
-  const isSelected = (day: number, hour: number) => {
-    if (!selectStart || selectStart.day !== day) return false;
-    const endH  = hoverHour !== null ? hoverHour : selectStart.startHour;
-    const start = Math.min(selectStart.startHour, endH);
-    const end   = Math.max(selectStart.startHour, endH);
-    return hour >= start && hour <= end;
+  const isCellHighlighted = (day: number, hour: number) => {
+    if (dragHighlight && dragHighlight.day === day) {
+      return hour >= dragHighlight.lo && hour <= dragHighlight.hi;
+    }
+    if (clickSelectStart?.day === day && hour === clickSelectStart.startHour) return true;
+    return false;
   };
 
-  // ── 블록 편집 모달 ──────────────────────────────────
-  const [modal,        setModal]        = useState<ModalState>(null);
-  const [formColor,    setFormColor]    = useState(MODES[0].color);
-  const [formLabel,    setFormLabel]    = useState('');
-  const [formRoutines, setFormRoutines] = useState<string[]>([]);
-  const [detailBlock,  setDetailBlock]  = useState<ScheduleBlock | null>(null);
+  // ── 블록 생성/수정 모달 ──────────────────────────────
+  const [modal,         setModal]         = useState<ModalState>(null);
+  const [formColor,     setFormColor]     = useState(MODES[0].color);
+  const [formLabel,     setFormLabel]     = useState('');
+  const [formRoutines,  setFormRoutines]  = useState<string[]>([]);
+  const [formStartHour, setFormStartHour] = useState(3);
+  const [formEndHour,   setFormEndHour]   = useState(4);
+  const [detailBlock,   setDetailBlock]   = useState<ScheduleBlock | null>(null);
+
+  const openModal = (day: number, startH: number, endH: number, editBlock?: ScheduleBlock) => {
+    setModal({ day, startHour: startH, endHour: endH, editId: editBlock?.id });
+    setFormStartHour(startH);
+    setFormEndHour(endH);
+    setFormColor(editBlock?.color ?? MODES[0].color);
+    setFormLabel(editBlock?.label ?? '');
+    setFormRoutines(editBlock?.routineIds ?? []);
+    setClickSelectStart(null);
+  };
 
   const saveBlock = () => {
     if (!modal) return;
+    const payload = {
+      color: formColor, label: formLabel,
+      routineIds: formRoutines,
+      startHour: formStartHour, endHour: formEndHour,
+    };
     if (modal.editId) {
-      updateScheduleBlock(modal.editId, {
-        color: formColor, label: formLabel,
-        routineIds: formRoutines,
-        startHour: modal.startHour, endHour: modal.endHour,
-      });
+      updateScheduleBlock(modal.editId, payload);
     } else {
-      addScheduleBlock({
-        dayOfWeek: modal.day,
-        startHour: modal.startHour, endHour: modal.endHour,
-        color: formColor, label: formLabel, routineIds: formRoutines,
-      });
+      addScheduleBlock({ dayOfWeek: modal.day, ...payload });
     }
     setModal(null);
   };
 
   const openEdit = (block: ScheduleBlock) => {
     setDetailBlock(null);
-    setModal({ day: block.dayOfWeek, startHour: block.startHour, endHour: block.endHour, editId: block.id });
-    setFormColor(block.color);
-    setFormLabel(block.label);
-    setFormRoutines(block.routineIds);
+    openModal(block.dayOfWeek, block.startHour, block.endHour, block);
   };
 
   // ── 반복 복사 모달 ──────────────────────────────────
@@ -198,11 +202,8 @@ export default function WeeklyTab() {
     if (!opt) return;
     const targetDays = opt.days.filter(d => d !== dayOfWeek);
     const source     = scheduleBlocks.filter(b => b.dayOfWeek === dayOfWeek);
-
     for (const targetDay of targetDays) {
-      scheduleBlocks
-        .filter(b => b.dayOfWeek === targetDay)
-        .forEach(b => deleteScheduleBlock(b.id));
+      scheduleBlocks.filter(b => b.dayOfWeek === targetDay).forEach(b => deleteScheduleBlock(b.id));
       source.forEach(b =>
         addScheduleBlock({
           dayOfWeek: targetDay,
@@ -217,7 +218,7 @@ export default function WeeklyTab() {
   // ── 렌더 ────────────────────────────────────────────
   return (
     <div
-      onMouseLeave={() => { setHoverHour(null); isDragging.current = false; }}
+      onMouseLeave={cancelDrag}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -237,7 +238,7 @@ export default function WeeklyTab() {
           </button>
           {weekOffset !== 0 && (
             <button
-              onClick={() => { setWeekOffset(0); setSelectStart(null); }}
+              onClick={() => { setWeekOffset(0); setClickSelectStart(null); }}
               className="text-xs px-2 py-1 rounded-full font-medium"
               style={{ color: 'var(--ds-accent)', background: 'var(--ds-bg-secondary)' }}
             >
@@ -280,7 +281,7 @@ export default function WeeklyTab() {
       </div>
 
       {/* 시간표 그리드 */}
-      <div className="flex" style={{ paddingBottom: 8 }}>
+      <div className="flex" style={{ paddingBottom: 8 }} onMouseUp={() => { if (dragOriginRef.current) cancelDrag(); }}>
         {/* 시간 레이블 */}
         <div style={{ width: TIME_COL_W, flexShrink: 0 }}>
           {HOURS.map(h => (
@@ -305,18 +306,16 @@ export default function WeeklyTab() {
                 key={h}
                 style={{
                   height: CELL_H,
-                  background: isSelected(day, h) ? 'rgba(54,90,168,0.18)' : 'transparent',
+                  background: isCellHighlighted(day, h) ? 'rgba(54,90,168,0.22)' : 'transparent',
                   borderBottom:
                     i % 6 === 5 ? '1px dashed var(--ds-border)' :
                     i % 3 === 2 ? '1px solid rgba(122,136,164,0.07)' : 'none',
                   userSelect: 'none',
+                  cursor: 'crosshair',
                 }}
                 onMouseDown={() => handleCellMouseDown(day, h)}
-                onMouseUp={() => handleCellMouseUp(day)}
-                onMouseEnter={() => {
-                  if (isDragging.current && selectStart?.day === day) setHoverHour(h);
-                  else if (selectStart?.day === day) setHoverHour(h);
-                }}
+                onMouseEnter={() => handleCellMouseEnter(day, h)}
+                onMouseUp={() => handleCellMouseUp(day, h)}
                 onClick={() => handleCellClick(day, h)}
               />
             ))}
@@ -362,7 +361,7 @@ export default function WeeklyTab() {
       </div>
 
       {/* 범위 선택 안내 토스트 */}
-      {selectStart && (
+      {clickSelectStart && (
         <div className="fixed bottom-24 left-0 right-0 flex justify-center pointer-events-none z-20">
           <div className="text-xs px-4 py-2 rounded-full" style={{ background: 'rgba(0,0,0,0.72)', color: '#fff' }}>
             종료 셀을 탭하거나 드래그하여 범위 완성
@@ -396,7 +395,6 @@ export default function WeeklyTab() {
             </div>
 
             <div className="modal-sheet__content" style={{ paddingTop: 0 }}>
-              {/* 1단계: 반복 패턴 선택 */}
               {!repeatModal.pendingOptionKey && (
                 <>
                   <p className="text-xs mb-4" style={{ color: 'var(--ds-text-secondary)' }}>
@@ -417,7 +415,6 @@ export default function WeeklyTab() {
                 </>
               )}
 
-              {/* 2단계: 적용 범위 선택 */}
               {repeatModal.pendingOptionKey && (
                 <>
                   <p className="text-xs mb-4" style={{ color: 'var(--ds-text-secondary)' }}>
@@ -460,7 +457,7 @@ export default function WeeklyTab() {
               <p className="text-xs mb-3" style={{ color: 'var(--ds-text-secondary)' }}>
                 {DAY_LABELS[detailBlock.dayOfWeek]}요일&nbsp;
                 {String(detailBlock.startHour).padStart(2, '0')}:00 –{' '}
-                {String(detailBlock.endHour).padStart(2, '0')}:00
+                {detailBlock.endHour === 24 ? '24:00' : `${String(detailBlock.endHour).padStart(2, '0')}:00`}
               </p>
               {detailBlock.routineIds.length > 0 && (
                 <div>
@@ -500,11 +497,44 @@ export default function WeeklyTab() {
               <button onClick={() => setModal(null)} style={{ color: 'var(--ds-text-tertiary)' }}><X size={18} /></button>
             </div>
             <div className="modal-sheet__content" style={{ paddingTop: 0 }}>
-              <p className="text-xs mb-4" style={{ color: 'var(--ds-text-secondary)' }}>
-                {DAY_LABELS[modal.day]}요일&nbsp;
-                {String(modal.startHour).padStart(2, '0')}:00 –{' '}
-                {String(modal.endHour).padStart(2, '0')}:00
-              </p>
+
+              {/* 시간 선택 */}
+              <div className="field" style={{ marginBottom: 16 }}>
+                <label className="field__label">시간</label>
+                <div className="flex items-center gap-2" style={{ marginTop: 6 }}>
+                  <select
+                    value={formStartHour}
+                    onChange={e => {
+                      const h = Number(e.target.value);
+                      setFormStartHour(h);
+                      if (h >= formEndHour) setFormEndHour(h + 1);
+                    }}
+                    className="text-sm rounded-lg px-2 py-1.5 flex-1"
+                    style={{ background: 'var(--ds-bg-secondary)', color: 'var(--ds-text-primary)', border: '1px solid var(--ds-border)' }}
+                  >
+                    {HOURS.map(h => (
+                      <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                    ))}
+                  </select>
+                  <span className="text-sm" style={{ color: 'var(--ds-text-secondary)' }}>~</span>
+                  <select
+                    value={formEndHour}
+                    onChange={e => {
+                      const h = Number(e.target.value);
+                      setFormEndHour(h);
+                      if (h <= formStartHour) setFormStartHour(h - 1);
+                    }}
+                    className="text-sm rounded-lg px-2 py-1.5 flex-1"
+                    style={{ background: 'var(--ds-bg-secondary)', color: 'var(--ds-text-primary)', border: '1px solid var(--ds-border)' }}
+                  >
+                    {Array.from({ length: 22 }, (_, i) => i + 3)
+                      .filter(h => h > formStartHour)
+                      .map(h => (
+                        <option key={h} value={h}>{h === 24 ? '24:00' : `${String(h).padStart(2, '0')}:00`}</option>
+                      ))}
+                  </select>
+                </div>
+              </div>
 
               {/* 모드 선택 */}
               <div className="field" style={{ marginBottom: 16 }}>
