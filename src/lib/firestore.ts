@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Routine, DailyRecord, Reflection, AppSettings, TimeEntry } from '../types';
+import type { Routine, DailyRecord, Reflection, AppSettings, TimeEntry, ScheduleBlock } from '../types';
 
 export interface UserData {
   routines: Routine[];
@@ -9,6 +9,7 @@ export interface UserData {
   timeEntries: TimeEntry[];
   keywords: string[];
   settings: AppSettings;
+  scheduleBlocks: ScheduleBlock[];
   updatedAt: string;
 }
 
@@ -19,6 +20,7 @@ const defaultData: UserData = {
   timeEntries: [],
   keywords: [],
   settings: { discordWebhookUrl: '', darkMode: false, username: '' },
+  scheduleBlocks: [],
   updatedAt: new Date().toISOString(),
 };
 
