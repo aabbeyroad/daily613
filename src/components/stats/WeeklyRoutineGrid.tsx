@@ -11,7 +11,7 @@ const levelColors = {
   max: 'bg-max',
 };
 
-export default function WeeklyRoutineGrid() {
+export default function WeeklyRoutineGrid({ weekAnchor }: { weekAnchor?: Date }) {
   const routines = useRoutineStore((s) => s.routines);
   const records = useRoutineStore((s) => s.records);
   const selectedKeyword = useRoutineStore((s) => s.selectedKeyword);
@@ -19,7 +19,7 @@ export default function WeeklyRoutineGrid() {
 
   const today = new Date();
   const todayStr = formatDate(today);
-  const weekDays = getWeekDays(today);
+  const weekDays = getWeekDays(weekAnchor ?? today);
 
   const filteredRoutines = useMemo(() =>
     getFilteredRoutines().sort((a, b) => a.order - b.order),

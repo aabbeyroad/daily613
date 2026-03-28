@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Flame, Target, TrendingUp, Trophy, Zap, ThumbsUp, Minus, ThumbsDown } from 'lucide-react';
+import { Flame, Target, TrendingUp, Trophy, Zap, ThumbsUp, Minus, ThumbsDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, getWeekDays, startOfMonth, endOfMonth } from '../../utils/date';
 import KeywordFilter from '../common/KeywordFilter';
@@ -27,6 +27,7 @@ type LevelDistPeriod = 'all' | 'week' | 'month';
 
 export default function StatsTab() {
   const [levelDistPeriod, setLevelDistPeriod] = useState<LevelDistPeriod>('all');
+  const [weekOffset, setWeekOffset] = useState(0);
   const routines = useRoutineStore((s) => s.routines);
   const records = useRoutineStore((s) => s.records);
   const selectedKeyword = useRoutineStore((s) => s.selectedKeyword);
@@ -37,9 +38,18 @@ export default function StatsTab() {
 
   const today = new Date();
   const todayStr = formatDate(today);
-  const weekDays = getWeekDays(today);
+
+  // 선택된 주 계산
+  const selectedWeekAnchor = new Date(today);
+  selectedWeekAnchor.setDate(today.getDate() + weekOffset * 7);
+  const isCurrentWeek = weekOffset === 0;
+  const weekPeriodLabel = isCurrentWeek ? '이번 주' : '해당 주';
+
+  const weekDays = getWeekDays(selectedWeekAnchor);
   const weekStart = formatDate(weekDays[0]);
   const weekEnd = formatDate(weekDays[6]);
+  const weekRangeLabel = `${weekDays[0].getMonth() + 1}월 ${weekDays[0].getDate()}일 – ${weekDays[6].getMonth() + 1}월 ${weekDays[6].getDate()}일`;
+
   const monthStart = formatDate(startOfMonth(today));
   const monthEnd = formatDate(endOfMonth(today));
 
@@ -118,15 +128,52 @@ export default function StatsTab() {
   const statCards = [
     { icon: Flame, label: '연속 달성', value: `${streak}일`, color: 'text-orange-500', bgColor: 'bg-orange-50 dark:bg-orange-900/20' },
     { icon: Target, label: '오늘', value: `${todayRate}%`, color: 'text-done', bgColor: 'bg-green-50 dark:bg-green-900/20' },
-    { icon: TrendingUp, label: '이번 주', value: `${weeklyRate}%`, color: 'text-more', bgColor: 'bg-blue-50 dark:bg-blue-900/20' },
+    { icon: TrendingUp, label: weekPeriodLabel, value: `${weeklyRate}%`, color: 'text-more', bgColor: 'bg-blue-50 dark:bg-blue-900/20' },
     { icon: Trophy, label: '이번 달', value: `${monthlyRate}%`, color: 'text-max', bgColor: 'bg-purple-50 dark:bg-purple-900/20' },
   ];
 
   return (
     <div className="px-4 pt-5 pb-4">
       {/* 키워드 필터 */}
-      <div className="mb-5">
+      <div className="mb-4">
         <KeywordFilter />
+      </div>
+
+      {/* 주간 이동 네비게이션 */}
+      <div className="flex items-center justify-between mb-5 px-1">
+        <button
+          onClick={() => setWeekOffset(prev => prev - 1)}
+          className="rounded-full p-1.5"
+          style={{ color: 'var(--ds-text-secondary)', background: 'var(--ds-bg-secondary)', border: '1px solid var(--ds-border)' }}
+        >
+          <ChevronLeft size={16} />
+        </button>
+
+        <div className="flex items-center gap-2">
+          <span
+            className="text-[13px] font-semibold"
+            style={{ color: isCurrentWeek ? 'var(--ds-accent)' : 'var(--ds-text-primary)' }}
+          >
+            {weekRangeLabel}
+          </span>
+          {!isCurrentWeek && (
+            <button
+              onClick={() => setWeekOffset(0)}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
+              style={{ color: 'var(--ds-accent)', background: 'var(--ds-bg-secondary)', border: '1px solid var(--ds-border)' }}
+            >
+              이번 주
+            </button>
+          )}
+        </div>
+
+        <button
+          onClick={() => setWeekOffset(prev => prev + 1)}
+          className="rounded-full p-1.5"
+          style={{ color: 'var(--ds-text-secondary)', background: 'var(--ds-bg-secondary)', border: '1px solid var(--ds-border)' }}
+        >
+          <ChevronRight size={16} />
+        </button>
       </div>
 
       {selectedKeyword && (
@@ -158,7 +205,7 @@ export default function StatsTab() {
               <Zap size={19} className="text-yellow-500" />
             </div>
             <div>
-              <div className="text-[11px] text-text-tertiary font-medium uppercase tracking-wide">이번 주 점수</div>
+              <div className="text-[11px] text-text-tertiary font-medium uppercase tracking-wide">{weekPeriodLabel} 점수</div>
               <div className="text-2xl font-bold text-text-primary leading-tight mt-0.5">{weeklyScore}<span className="text-sm text-text-tertiary font-normal ml-1">pts</span></div>
             </div>
           </div>
@@ -172,14 +219,14 @@ export default function StatsTab() {
 
       {/* 이번 주 루틴별 현황 */}
       <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
-        <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">이번 주 루틴 현황</h3>
-        <WeeklyRoutineGrid />
+        <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">{weekPeriodLabel} 루틴 현황</h3>
+        <WeeklyRoutineGrid weekAnchor={selectedWeekAnchor} />
       </div>
 
       {/* 이번 주 모드 평가 현황 — 주간 배치표 축소판 */}
       {visibleSlotRange && (
         <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
-          <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">이번 주 모드 평가 현황</h3>
+          <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">{weekPeriodLabel} 모드 평가 현황</h3>
 
           {/* 요일 헤더 (WeeklyTab과 동일한 구조) */}
           <div className="flex" style={{ paddingLeft: TIME_COL_W, borderBottom: '1px solid var(--ds-border)', paddingBottom: 4, marginBottom: 0 }}>
