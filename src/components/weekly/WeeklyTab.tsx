@@ -84,12 +84,17 @@ export default function WeeklyTab() {
     evaluations[`${blockId}-${dateStr}`] ?? null;
 
   // ── 오늘 정보 ───────────────────────────────────────
-  const today           = new Date();
-  const todayStr        = format(today, 'yyyy-MM-dd');
-  const todayDayOfWeek  = (today.getDay() + 6) % 7; // Mon=0 … Sun=6
-  const todayBlocks     = [...scheduleBlocks]
-    .filter(b => b.dayOfWeek === todayDayOfWeek)
+  const today = new Date();
+
+  // ── 일별 배치표 날짜 탐색 ────────────────────────────
+  const [dayOffset, setDayOffset] = useState(0);
+  const selectedDate       = addDays(today, dayOffset);
+  const selectedDateStr    = format(selectedDate, 'yyyy-MM-dd');
+  const selectedDayOfWeek  = (selectedDate.getDay() + 6) % 7; // Mon=0 … Sun=6
+  const selectedDayBlocks  = [...scheduleBlocks]
+    .filter(b => b.dayOfWeek === selectedDayOfWeek)
     .sort((a, b) => a.startHour - b.startHour);
+  const isSelectedToday    = dayOffset === 0;
 
   // ── 주간 탐색 ──────────────────────────────────────
   const [weekOffset, setWeekOffset] = useState(0);
@@ -238,21 +243,55 @@ export default function WeeklyTab() {
 
       {/* ━━━ 섹션 1: 오늘의 모드 배치표 ━━━ */}
       <div className="mx-3 mt-3 mb-1 p-4 rounded-2xl" style={{ background: 'var(--ds-bg-secondary)', border: '1px solid var(--ds-border)' }}>
-        <h2 className="text-base font-bold mb-2" style={{ color: 'var(--ds-text-primary)' }}>
-          오늘의 모드 배치표
-          <span className="text-xs font-normal ml-2" style={{ color: 'var(--ds-text-tertiary)' }}>
-            {format(today, 'M월 d일 (EEE)', { locale: ko })}
-          </span>
-        </h2>
 
-        {todayBlocks.length === 0 ? (
+        {/* 헤더: 제목 + 날짜 이동 버튼 */}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-bold" style={{ color: 'var(--ds-text-primary)' }}>
+            오늘의 모드 배치표
+          </h2>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => setDayOffset(prev => prev - 1)}
+              className="rounded-full p-1.5"
+              style={{ color: 'var(--ds-text-secondary)', background: 'var(--ds-bg-tertiary)' }}
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <span
+              className="text-[12px] font-medium px-1.5 text-center"
+              style={{ color: isSelectedToday ? 'var(--ds-accent)' : 'var(--ds-text-primary)', minWidth: 88 }}
+            >
+              {format(selectedDate, 'M월 d일 (EEE)', { locale: ko })}
+            </span>
+            <button
+              onClick={() => setDayOffset(prev => prev + 1)}
+              className="rounded-full p-1.5"
+              style={{ color: 'var(--ds-text-secondary)', background: 'var(--ds-bg-tertiary)' }}
+            >
+              <ChevronRight size={15} />
+            </button>
+            {!isSelectedToday && (
+              <button
+                onClick={() => setDayOffset(0)}
+                className="text-[11px] font-semibold px-2 py-1 rounded-full ml-1"
+                style={{ color: 'var(--ds-accent)', background: 'var(--ds-bg-tertiary)' }}
+              >
+                오늘
+              </button>
+            )}
+          </div>
+        </div>
+
+        {selectedDayBlocks.length === 0 ? (
           <p className="text-xs py-3 text-center" style={{ color: 'var(--ds-text-tertiary)' }}>
-            오늘 배치된 일정이 없습니다. 아래 주간 배치표에서 추가하세요.
+            {isSelectedToday
+              ? '오늘 배치된 일정이 없습니다. 아래 주간 배치표에서 추가하세요.'
+              : '이 날 배치된 일정이 없습니다.'}
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            {todayBlocks.map(block => {
-              const ev = getEval(block.id, todayStr);
+            {selectedDayBlocks.map(block => {
+              const ev = getEval(block.id, selectedDateStr);
               return (
                 <div
                   key={block.id}
@@ -284,7 +323,7 @@ export default function WeeklyTab() {
                     ]).map(({ val, icon, color }) => (
                       <button
                         key={val}
-                        onClick={() => setEval(block.id, todayStr, val)}
+                        onClick={() => setEval(block.id, selectedDateStr, val)}
                         style={{
                           width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           background: ev === val ? color + '22' : 'var(--ds-bg-secondary)',
