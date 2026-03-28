@@ -8,12 +8,18 @@ import Calendar from './Calendar';
 import WeeklyRoutineGrid from './WeeklyRoutineGrid';
 
 const EVAL_CONFIG = {
-  good: { label: '좋음', bg: '#22C55E22', border: '#22C55E66', dot: '#22C55E', text: '#16a34a' },
-  soso: { label: '보통', bg: '#F59E0B22', border: '#F59E0B66', dot: '#F59E0B', text: '#d97706' },
-  bad:  { label: '아쉬움', bg: '#EF444422', border: '#EF444466', dot: '#EF4444', text: '#dc2626' },
+  good: { label: '좋음',   fill: '#22C55E33', border: '#22C55E', text: '#16a34a' },
+  soso: { label: '보통',   fill: '#F59E0B33', border: '#F59E0B', text: '#b45309' },
+  bad:  { label: '아쉬움', fill: '#EF444433', border: '#EF4444', text: '#dc2626' },
 } as const;
 
 const DAY_LABELS_SHORT = ['월', '화', '수', '목', '금', '토', '일'];
+
+// 미니 스케줄 그리드 상수 (WeeklyTab의 축소판)
+const STAT_CELL_H = 6; // px per 30-min slot (WeeklyTab은 12px)
+const statHourToSlot = (hour: number) => (hour - 3) * 2;
+const statSlotToHour = (slot: number) => slot * 0.5 + 3;
+const TIME_COL_W = 22;
 
 const LEVEL_COLORS = { none: '#94a3b8', done: '#22c55e', more: '#3b82f6', max: '#a855f7' };
 
@@ -74,20 +80,15 @@ export default function StatsTab() {
     catch { return {} as Record<string, string>; }
   }, []);
 
-  const weeklyModeEvals = useMemo(() => {
-    const modeLabels = [...new Set(scheduleBlocks.map(b => b.label).filter(Boolean))];
-    return modeLabels.map(label => {
-      const repBlock = scheduleBlocks.find(b => b.label === label);
-      const color = repBlock?.color ?? '#94a3b8';
-      const days = weekDays.map((day, dayIdx) => {
-        const dateStr = formatDate(day);
-        const block = scheduleBlocks.find(b => b.label === label && b.dayOfWeek === dayIdx);
-        const evalVal = block ? (blockEvals[`${block.id}-${dateStr}`] ?? null) : null;
-        return { dateStr, eval: evalVal as 'good' | 'soso' | 'bad' | null, hasBlock: !!block };
-      });
-      return { label, color, days };
-    });
-  }, [scheduleBlocks, blockEvals, weekDays]);
+  // 미니 그리드용: 블록이 존재하는 시간 범위만 추려서 표시
+  const visibleSlotRange = useMemo(() => {
+    if (scheduleBlocks.length === 0) return null;
+    const starts = scheduleBlocks.map(b => statHourToSlot(b.startHour));
+    const ends   = scheduleBlocks.map(b => statHourToSlot(b.endHour));
+    const lo = Math.max(0,  Math.min(...starts) - 2);
+    const hi = Math.min(41, Math.max(...ends)   + 2);
+    return { lo, hi, slots: Array.from({ length: hi - lo + 1 }, (_, i) => lo + i) };
+  }, [scheduleBlocks]);
 
   const levelDistribution = useMemo(() => {
     let filteredRecords = records;
@@ -175,88 +176,105 @@ export default function StatsTab() {
         <WeeklyRoutineGrid />
       </div>
 
-      {/* 이번 주 모드 평가 현황 */}
-      {weeklyModeEvals.length > 0 && (
+      {/* 이번 주 모드 평가 현황 — 주간 배치표 축소판 */}
+      {visibleSlotRange && (
         <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
-          <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">이번 주 모드 평가 현황</h3>
+          <h3 className="font-semibold text-[13px] text-text-secondary mb-3 uppercase tracking-wide">이번 주 모드 평가 현황</h3>
 
-          {/* 요일 헤더 */}
-          <div className="flex items-center mb-1.5">
-            <div style={{ width: 72, flexShrink: 0 }} />
+          {/* 요일 헤더 (WeeklyTab과 동일한 구조) */}
+          <div className="flex" style={{ paddingLeft: TIME_COL_W, borderBottom: '1px solid var(--ds-border)', paddingBottom: 4, marginBottom: 0 }}>
             {weekDays.map((day, i) => {
               const isToday = formatDate(day) === todayStr;
               return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                  <span
-                    className="text-[10px] font-semibold"
-                    style={{ color: i >= 5 ? '#EF4444' : 'var(--color-text-tertiary)' }}
-                  >
+                <div key={i} className="flex-1 text-center">
+                  <div className="text-[10px] font-semibold leading-tight"
+                    style={{ color: i >= 5 ? '#EF4444' : 'var(--ds-text-secondary)' }}>
                     {DAY_LABELS_SHORT[i]}
-                  </span>
-                  <span
-                    className="text-[9px] leading-none"
-                    style={{
-                      color: isToday ? 'var(--ds-accent)' : 'var(--color-text-tertiary)',
-                      fontWeight: isToday ? 700 : 400,
-                    }}
-                  >
+                  </div>
+                  <div className="text-[9px] leading-tight"
+                    style={{ color: isToday ? 'var(--ds-accent)' : 'var(--ds-text-tertiary)', fontWeight: isToday ? 700 : 400 }}>
                     {day.getDate()}
-                  </span>
+                  </div>
                 </div>
               );
             })}
           </div>
 
-          {/* 모드 행 */}
-          <div className="flex flex-col gap-1.5">
-            {weeklyModeEvals.map(({ label, color, days }) => (
-              <div key={label} className="flex items-center">
-                {/* 모드 레이블 */}
-                <div className="flex items-center gap-1.5" style={{ width: 72, flexShrink: 0 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
-                  <span className="text-[12px] font-medium truncate" style={{ color: 'var(--ds-text-primary)' }}>{label}</span>
+          {/* 시간표 그리드 본체 */}
+          <div className="flex">
+            {/* 시간 레이블 컬럼 */}
+            <div style={{ width: TIME_COL_W, flexShrink: 0 }}>
+              {visibleSlotRange.slots.map(slot => (
+                <div key={slot} style={{ height: STAT_CELL_H }} className="flex items-start justify-end pr-1">
+                  {slot % 4 === 0 && (
+                    <span className="text-[8px] leading-none pt-px" style={{ color: 'var(--ds-text-tertiary)' }}>
+                      {String(Math.floor(statSlotToHour(slot))).padStart(2, '0')}
+                    </span>
+                  )}
                 </div>
+              ))}
+            </div>
 
-                {/* 요일별 평가 셀 */}
-                {days.map((d, i) => (
-                  <div key={i} className="flex-1 flex items-center justify-center">
-                    {d.eval ? (
+            {/* 요일별 컬럼 */}
+            {weekDays.map((day, dayIdx) => {
+              const dateStr = formatDate(day);
+              return (
+                <div key={dayIdx} className="flex-1 relative" style={{ borderLeft: '1px solid var(--ds-border)' }}>
+                  {/* 배경 셀 */}
+                  {visibleSlotRange.slots.map((slot, i) => (
+                    <div key={slot} style={{
+                      height: STAT_CELL_H,
+                      borderBottom: i % 2 === 1 ? '1px solid rgba(122,136,164,0.07)' : 'none',
+                    }} />
+                  ))}
+
+                  {/* 스케줄 블록 */}
+                  {scheduleBlocks.filter(b => b.dayOfWeek === dayIdx).map(block => {
+                    const topSlot  = statHourToSlot(block.startHour) - visibleSlotRange.lo;
+                    const spanSlots = (block.endHour - block.startHour) * 2;
+                    const evalVal  = blockEvals[`${block.id}-${dateStr}`] as keyof typeof EVAL_CONFIG | undefined;
+                    const cfg      = evalVal ? EVAL_CONFIG[evalVal] : null;
+
+                    return (
                       <div
+                        key={block.id}
                         style={{
-                          width: 26, height: 26, borderRadius: '50%',
-                          background: EVAL_CONFIG[d.eval].bg,
-                          border: `1.5px solid ${EVAL_CONFIG[d.eval].border}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          position: 'absolute',
+                          top:    topSlot  * STAT_CELL_H + 1,
+                          height: spanSlots * STAT_CELL_H - 2,
+                          left: 1, right: 1,
+                          backgroundColor: cfg ? cfg.fill : block.color + '40',
+                          borderLeft: `2.5px solid ${cfg ? cfg.border : block.color + 'BB'}`,
+                          borderRadius: 3,
+                          overflow: 'hidden',
+                          transition: 'background-color 0.15s',
                         }}
                       >
-                        <span style={{ fontSize: 11, lineHeight: 1 }}>
-                          {d.eval === 'good' ? '👍' : d.eval === 'soso' ? '➖' : '👎'}
-                        </span>
+                        {spanSlots >= 5 && (
+                          <p className="truncate leading-tight"
+                            style={{ fontSize: 8, fontWeight: 700, padding: '1px 2px', color: cfg ? cfg.text : '#fff' }}>
+                            {block.label || '─'}
+                          </p>
+                        )}
                       </div>
-                    ) : d.hasBlock ? (
-                      <div style={{ width: 26, height: 26, borderRadius: '50%', border: '1.5px dashed var(--ds-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--ds-border)' }} />
-                      </div>
-                    ) : (
-                      <div style={{ width: 26, height: 26 }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
 
           {/* 범례 */}
-          <div className="flex items-center gap-3 mt-3 pt-3" style={{ borderTop: '1px solid var(--ds-border)' }}>
-            {(Object.entries(EVAL_CONFIG) as [keyof typeof EVAL_CONFIG, typeof EVAL_CONFIG[keyof typeof EVAL_CONFIG]][]).map(([key, cfg]) => (
-              <div key={key} className="flex items-center gap-1">
-                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: cfg.dot }} />
-                <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>{cfg.label}</span>
+          <div className="flex items-center gap-3 mt-2.5 pt-2.5" style={{ borderTop: '1px solid var(--ds-border)' }}>
+            {(Object.entries(EVAL_CONFIG) as [keyof typeof EVAL_CONFIG, typeof EVAL_CONFIG[keyof typeof EVAL_CONFIG]][]).map(([, cfg]) => (
+              <div key={cfg.label} className="flex items-center gap-1">
+                <div style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: cfg.border, opacity: 0.85 }} />
+                <span className="text-[10px]" style={{ color: 'var(--ds-text-tertiary)' }}>{cfg.label}</span>
               </div>
             ))}
             <div className="flex items-center gap-1">
-              <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px dashed var(--ds-border)' }} />
-              <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>미평가</span>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: 'transparent', border: '1px solid var(--ds-border)' }} />
+              <span className="text-[10px]" style={{ color: 'var(--ds-text-tertiary)' }}>미평가</span>
             </div>
           </div>
         </div>
