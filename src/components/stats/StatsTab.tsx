@@ -7,6 +7,14 @@ import KeywordFilter from '../common/KeywordFilter';
 import Calendar from './Calendar';
 import WeeklyRoutineGrid from './WeeklyRoutineGrid';
 
+const EVAL_CONFIG = {
+  good: { label: '좋음', bg: '#22C55E22', border: '#22C55E66', dot: '#22C55E', text: '#16a34a' },
+  soso: { label: '보통', bg: '#F59E0B22', border: '#F59E0B66', dot: '#F59E0B', text: '#d97706' },
+  bad:  { label: '아쉬움', bg: '#EF444422', border: '#EF444466', dot: '#EF4444', text: '#dc2626' },
+} as const;
+
+const DAY_LABELS_SHORT = ['월', '화', '수', '목', '금', '토', '일'];
+
 const LEVEL_COLORS = { none: '#94a3b8', done: '#22c55e', more: '#3b82f6', max: '#a855f7' };
 
 type LevelDistPeriod = 'all' | 'week' | 'month';
@@ -30,6 +38,8 @@ export default function StatsTab() {
   const monthEnd = formatDate(endOfMonth(today));
 
   const filteredRoutines = useMemo(() => getFilteredRoutines(), [routines, selectedKeyword]);
+
+  const scheduleBlocks = useRoutineStore((s) => s.scheduleBlocks) ?? [];
 
   const streak = useMemo(() => {
     const recordMap: Record<string, Record<string, string>> = {};
@@ -58,6 +68,28 @@ export default function StatsTab() {
   const weeklyRate = getWeeklyRate(weekStart, weekEnd, true);
   const monthlyRate = getWeeklyRate(monthStart, monthEnd, true);
   const weeklyScore = getWeeklyScore(weekStart, weekEnd, true);
+
+  const blockEvals = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('blockEvals') || '{}') as Record<string, string>; }
+    catch { return {} as Record<string, string>; }
+  }, []);
+
+  const weeklyModeEvals = useMemo(() => {
+    const modeLabels = [...new Set(scheduleBlocks.map(b => b.label).filter(Boolean))];
+    return modeLabels.map(label => {
+      const repBlock = scheduleBlocks.find(b => b.label === label);
+      const color = repBlock?.color ?? '#94a3b8';
+      const days = weekDays.map((day, dayIdx) => {
+        const dateStr = formatDate(day);
+        const block = scheduleBlocks.find(b => b.label === label && b.dayOfWeek === dayIdx);
+        const evalVal = block ? (blockEvals[`${block.id}-${dateStr}`] ?? null) : null;
+        return { dateStr, eval: evalVal as 'good' | 'soso' | 'bad' | null, hasBlock: !!block };
+      });
+      const counts = { good: 0, soso: 0, bad: 0 };
+      days.forEach(d => { if (d.eval) counts[d.eval]++; });
+      return { label, color, days, counts };
+    });
+  }, [scheduleBlocks, blockEvals, weekDays]);
 
   const levelDistribution = useMemo(() => {
     let filteredRecords = records;
@@ -144,6 +176,93 @@ export default function StatsTab() {
         <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">이번 주 루틴 현황</h3>
         <WeeklyRoutineGrid />
       </div>
+
+      {/* 이번 주 모드 평가 현황 */}
+      {weeklyModeEvals.length > 0 && (
+        <div className="p-4 rounded-2xl bg-surface-secondary border border-border mb-5">
+          <h3 className="font-semibold text-[13px] text-text-secondary mb-4 uppercase tracking-wide">이번 주 모드 평가 현황</h3>
+
+          {/* 요일 헤더 */}
+          <div className="flex items-center mb-1.5">
+            <div style={{ width: 72, flexShrink: 0 }} />
+            {weekDays.map((day, i) => {
+              const isToday = formatDate(day) === todayStr;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                  <span
+                    className="text-[10px] font-semibold"
+                    style={{ color: i >= 5 ? '#EF4444' : 'var(--color-text-tertiary)' }}
+                  >
+                    {DAY_LABELS_SHORT[i]}
+                  </span>
+                  <span
+                    className="text-[9px] leading-none"
+                    style={{
+                      color: isToday ? 'var(--ds-accent)' : 'var(--color-text-tertiary)',
+                      fontWeight: isToday ? 700 : 400,
+                    }}
+                  >
+                    {day.getDate()}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 모드 행 */}
+          <div className="flex flex-col gap-1.5">
+            {weeklyModeEvals.map(({ label, color, days, counts }) => (
+              <div key={label} className="flex items-center">
+                {/* 모드 레이블 */}
+                <div className="flex items-center gap-1.5" style={{ width: 72, flexShrink: 0 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
+                  <span className="text-[12px] font-medium truncate" style={{ color: 'var(--ds-text-primary)' }}>{label}</span>
+                </div>
+
+                {/* 요일별 평가 셀 */}
+                {days.map((d, i) => (
+                  <div key={i} className="flex-1 flex items-center justify-center">
+                    {d.eval ? (
+                      <div
+                        style={{
+                          width: 26, height: 26, borderRadius: '50%',
+                          background: EVAL_CONFIG[d.eval].bg,
+                          border: `1.5px solid ${EVAL_CONFIG[d.eval].border}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <span style={{ fontSize: 11, lineHeight: 1 }}>
+                          {d.eval === 'good' ? '👍' : d.eval === 'soso' ? '➖' : '👎'}
+                        </span>
+                      </div>
+                    ) : d.hasBlock ? (
+                      <div style={{ width: 26, height: 26, borderRadius: '50%', border: '1.5px dashed var(--ds-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--ds-border)' }} />
+                      </div>
+                    ) : (
+                      <div style={{ width: 26, height: 26 }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* 범례 */}
+          <div className="flex items-center gap-3 mt-3 pt-3" style={{ borderTop: '1px solid var(--ds-border)' }}>
+            {(Object.entries(EVAL_CONFIG) as [keyof typeof EVAL_CONFIG, typeof EVAL_CONFIG[keyof typeof EVAL_CONFIG]][]).map(([key, cfg]) => (
+              <div key={key} className="flex items-center gap-1">
+                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: cfg.dot }} />
+                <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>{cfg.label}</span>
+              </div>
+            ))}
+            <div className="flex items-center gap-1">
+              <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px dashed var(--ds-border)' }} />
+              <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>미평가</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 달성 비율 */}
       {levelDistribution.length > 0 && (
