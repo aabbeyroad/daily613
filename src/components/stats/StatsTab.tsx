@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Flame, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
+import { Flame, Target, TrendingUp, Trophy, Zap, ThumbsUp, Minus, ThumbsDown } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, getWeekDays, startOfMonth, endOfMonth } from '../../utils/date';
 import KeywordFilter from '../common/KeywordFilter';
@@ -8,9 +8,9 @@ import Calendar from './Calendar';
 import WeeklyRoutineGrid from './WeeklyRoutineGrid';
 
 const EVAL_CONFIG = {
-  good: { label: '좋음',   fill: '#22C55E33', border: '#22C55E', text: '#16a34a' },
-  soso: { label: '보통',   fill: '#F59E0B33', border: '#F59E0B', text: '#b45309' },
-  bad:  { label: '아쉬움', fill: '#EF444433', border: '#EF4444', text: '#dc2626' },
+  good: { label: '좋음',   color: '#22C55E', Icon: ThumbsUp   },
+  soso: { label: '보통',   color: '#F59E0B', Icon: Minus      },
+  bad:  { label: '아쉬움', color: '#EF4444', Icon: ThumbsDown },
 } as const;
 
 const DAY_LABELS_SHORT = ['월', '화', '수', '목', '금', '토', '일'];
@@ -230,32 +230,38 @@ export default function StatsTab() {
 
                   {/* 스케줄 블록 */}
                   {scheduleBlocks.filter(b => b.dayOfWeek === dayIdx).map(block => {
-                    const topSlot  = statHourToSlot(block.startHour) - visibleSlotRange.lo;
+                    const topSlot   = statHourToSlot(block.startHour) - visibleSlotRange.lo;
                     const spanSlots = (block.endHour - block.startHour) * 2;
-                    const evalVal  = blockEvals[`${block.id}-${dateStr}`] as keyof typeof EVAL_CONFIG | undefined;
-                    const cfg      = evalVal ? EVAL_CONFIG[evalVal] : null;
+                    const evalVal   = blockEvals[`${block.id}-${dateStr}`] as keyof typeof EVAL_CONFIG | undefined;
+                    const evalCfg   = evalVal ? EVAL_CONFIG[evalVal] : null;
+                    const EvalIcon  = evalCfg?.Icon;
+                    const blockH    = spanSlots * STAT_CELL_H - 2;
 
                     return (
                       <div
                         key={block.id}
                         style={{
                           position: 'absolute',
-                          top:    topSlot  * STAT_CELL_H + 1,
-                          height: spanSlots * STAT_CELL_H - 2,
+                          top:    topSlot * STAT_CELL_H + 1,
+                          height: blockH,
                           left: 1, right: 1,
-                          backgroundColor: cfg ? cfg.fill : block.color + '40',
-                          borderLeft: `2.5px solid ${cfg ? cfg.border : block.color + 'BB'}`,
+                          backgroundColor: block.color + '40',
+                          borderLeft: `2.5px solid ${block.color}BB`,
                           borderRadius: 3,
                           overflow: 'hidden',
-                          transition: 'background-color 0.15s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                         }}
                       >
-                        {spanSlots >= 5 && (
-                          <p className="truncate leading-tight"
-                            style={{ fontSize: 8, fontWeight: 700, padding: '1px 2px', color: cfg ? cfg.text : '#fff' }}>
+                        {EvalIcon && blockH >= 14 ? (
+                          <EvalIcon size={Math.min(11, blockH - 4)} color={evalCfg!.color} strokeWidth={2.5} />
+                        ) : (!evalCfg && spanSlots >= 5) ? (
+                          <p className="truncate leading-tight w-full"
+                            style={{ fontSize: 8, fontWeight: 700, padding: '1px 2px', color: '#fff' }}>
                             {block.label || '─'}
                           </p>
-                        )}
+                        ) : null}
                       </div>
                     );
                   })}
@@ -268,12 +274,12 @@ export default function StatsTab() {
           <div className="flex items-center gap-3 mt-2.5 pt-2.5" style={{ borderTop: '1px solid var(--ds-border)' }}>
             {(Object.entries(EVAL_CONFIG) as [keyof typeof EVAL_CONFIG, typeof EVAL_CONFIG[keyof typeof EVAL_CONFIG]][]).map(([, cfg]) => (
               <div key={cfg.label} className="flex items-center gap-1">
-                <div style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: cfg.border, opacity: 0.85 }} />
+                <cfg.Icon size={10} color={cfg.color} strokeWidth={2.5} />
                 <span className="text-[10px]" style={{ color: 'var(--ds-text-tertiary)' }}>{cfg.label}</span>
               </div>
             ))}
             <div className="flex items-center gap-1">
-              <div style={{ width: 8, height: 8, borderRadius: 2, background: 'transparent', border: '1px solid var(--ds-border)' }} />
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: 'transparent', border: '1px solid var(--ds-border)' }} />
               <span className="text-[10px]" style={{ color: 'var(--ds-text-tertiary)' }}>미평가</span>
             </div>
           </div>
