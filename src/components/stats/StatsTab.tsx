@@ -85,9 +85,7 @@ export default function StatsTab() {
         const evalVal = block ? (blockEvals[`${block.id}-${dateStr}`] ?? null) : null;
         return { dateStr, eval: evalVal as 'good' | 'soso' | 'bad' | null, hasBlock: !!block };
       });
-      const counts = { good: 0, soso: 0, bad: 0 };
-      days.forEach(d => { if (d.eval) counts[d.eval]++; });
-      return { label, color, days, counts };
+      return { label, color, days };
     });
   }, [scheduleBlocks, blockEvals, weekDays]);
 
@@ -211,7 +209,7 @@ export default function StatsTab() {
 
           {/* 모드 행 */}
           <div className="flex flex-col gap-1.5">
-            {weeklyModeEvals.map(({ label, color, days, counts }) => (
+            {weeklyModeEvals.map(({ label, color, days }) => (
               <div key={label} className="flex items-center">
                 {/* 모드 레이블 */}
                 <div className="flex items-center gap-1.5" style={{ width: 72, flexShrink: 0 }}>
