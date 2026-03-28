@@ -16,7 +16,7 @@ const EVAL_CONFIG = {
 const DAY_LABELS_SHORT = ['월', '화', '수', '목', '금', '토', '일'];
 
 // 미니 스케줄 그리드 상수 (WeeklyTab의 축소판)
-const STAT_CELL_H = 6; // px per 30-min slot (WeeklyTab은 12px)
+const STAT_CELL_H = 10; // px per 30-min slot
 const statHourToSlot = (hour: number) => (hour - 3) * 2;
 const statSlotToHour = (slot: number) => slot * 0.5 + 3;
 const TIME_COL_W = 22;
@@ -219,7 +219,7 @@ export default function StatsTab() {
             {weekDays.map((day, dayIdx) => {
               const dateStr = formatDate(day);
               return (
-                <div key={dayIdx} className="flex-1 relative" style={{ borderLeft: '1px solid var(--ds-border)' }}>
+                <div key={dayIdx} className="flex-1 relative" style={{ borderLeft: '1px solid var(--ds-border)', overflow: 'visible' }}>
                   {/* 배경 셀 */}
                   {visibleSlotRange.slots.map((slot, i) => (
                     <div key={slot} style={{
@@ -248,20 +248,27 @@ export default function StatsTab() {
                           backgroundColor: block.color + '40',
                           borderLeft: `2.5px solid ${block.color}BB`,
                           borderRadius: 3,
-                          overflow: 'hidden',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
+                          overflow: 'visible',
+                          zIndex: evalCfg ? 1 : 0,
                         }}
                       >
-                        {EvalIcon && blockH >= 14 ? (
-                          <EvalIcon size={Math.min(11, blockH - 4)} color={evalCfg!.color} strokeWidth={2.5} />
-                        ) : (!evalCfg && spanSlots >= 5) ? (
-                          <p className="truncate leading-tight w-full"
-                            style={{ fontSize: 8, fontWeight: 700, padding: '1px 2px', color: '#fff' }}>
-                            {block.label || '─'}
-                          </p>
-                        ) : null}
+                        {/* 평가 뱃지 — 블록 크기와 무관하게 항상 중앙에 표시 */}
+                        {EvalIcon && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '50%', left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            width: 18, height: 18,
+                            borderRadius: '50%',
+                            backgroundColor: evalCfg!.color,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.22)',
+                            border: '1.5px solid rgba(255,255,255,0.45)',
+                            zIndex: 2,
+                          }}>
+                            <EvalIcon size={10} color="#fff" strokeWidth={2.5} />
+                          </div>
+                        )}
                       </div>
                     );
                   })}
