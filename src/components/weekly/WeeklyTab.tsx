@@ -73,6 +73,17 @@ export default function WeeklyTab() {
   // ── 평가 데이터 (localStorage) ──────────────────────
   const [evaluations, setEvaluations] = useState<Record<string, EvalVal>>(loadEvals);
 
+  // ── 일별 메모 (localStorage) ─────────────────────────
+  const [memos, setMemosState] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('dayMemos') || '{}'); }
+    catch { return {}; }
+  });
+  const saveMemo = (dateStr: string, text: string) => {
+    const next = { ...memos, [dateStr]: text };
+    setMemosState(next);
+    localStorage.setItem('dayMemos', JSON.stringify(next));
+  };
+
   const setEval = (blockId: string, dateStr: string, val: EvalVal) => {
     const key  = `${blockId}-${dateStr}`;
     const next = { ...evaluations, [key]: val };
@@ -341,6 +352,23 @@ export default function WeeklyTab() {
             })}
           </div>
         )}
+
+        {/* 메모 */}
+        <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--ds-border)' }}>
+          <textarea
+            value={memos[selectedDateStr] ?? ''}
+            onChange={e => saveMemo(selectedDateStr, e.target.value)}
+            placeholder="이 날의 메모를 남겨보세요..."
+            rows={2}
+            className="w-full text-sm resize-none rounded-xl px-3 py-2 outline-none"
+            style={{
+              background: 'var(--ds-bg)',
+              border: '1px solid var(--ds-border)',
+              color: 'var(--ds-text-primary)',
+              lineHeight: 1.6,
+            }}
+          />
+        </div>
       </div>
 
       {/* 구분선 */}

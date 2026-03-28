@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Flame, Target, TrendingUp, Trophy, Zap, ThumbsUp, Minus, ThumbsDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Flame, Target, TrendingUp, Trophy, Zap, ThumbsUp, Minus, ThumbsDown, ChevronLeft, ChevronRight, X, StickyNote } from 'lucide-react';
 import { useRoutineStore } from '../../stores/routineStore';
 import { formatDate, getWeekDays, startOfMonth, endOfMonth } from '../../utils/date';
 import KeywordFilter from '../common/KeywordFilter';
@@ -28,6 +28,12 @@ type LevelDistPeriod = 'all' | 'week' | 'month';
 export default function StatsTab() {
   const [levelDistPeriod, setLevelDistPeriod] = useState<LevelDistPeriod>('all');
   const [weekOffset, setWeekOffset] = useState(0);
+  const [memoPopup, setMemoPopup] = useState<{ dateStr: string; label: string; text: string } | null>(null);
+
+  const dayMemos = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('dayMemos') || '{}') as Record<string, string>; }
+    catch { return {} as Record<string, string>; }
+  }, [weekOffset]); // weekOffset 변경 시(주 이동) 재조회
   const routines = useRoutineStore((s) => s.routines);
   const records = useRoutineStore((s) => s.records);
   const selectedKeyword = useRoutineStore((s) => s.selectedKeyword);
@@ -231,12 +237,22 @@ export default function StatsTab() {
           {/* 요일 헤더 (WeeklyTab과 동일한 구조) */}
           <div className="flex" style={{ paddingLeft: TIME_COL_W, borderBottom: '1px solid var(--ds-border)', paddingBottom: 4, marginBottom: 0 }}>
             {weekDays.map((day, i) => {
-              const isToday = formatDate(day) === todayStr;
+              const dateStr  = formatDate(day);
+              const isToday  = dateStr === todayStr;
+              const hasMemo  = !!(dayMemos[dateStr]?.trim());
               return (
-                <div key={i} className="flex-1 text-center">
-                  <div className="text-[10px] font-semibold leading-tight"
+                <div
+                  key={i}
+                  className="flex-1 text-center"
+                  style={{ cursor: hasMemo ? 'pointer' : 'default' }}
+                  onClick={() => hasMemo && setMemoPopup({ dateStr, label: `${DAY_LABELS_SHORT[i]} ${day.getDate()}일`, text: dayMemos[dateStr] })}
+                >
+                  <div className="text-[10px] font-semibold leading-tight flex items-center justify-center gap-0.5"
                     style={{ color: i >= 5 ? '#EF4444' : 'var(--ds-text-secondary)' }}>
                     {DAY_LABELS_SHORT[i]}
+                    {hasMemo && (
+                      <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--ds-accent)', flexShrink: 0, display: 'inline-block' }} />
+                    )}
                   </div>
                   <div className="text-[9px] leading-tight"
                     style={{ color: isToday ? 'var(--ds-accent)' : 'var(--ds-text-tertiary)', fontWeight: isToday ? 700 : 400 }}>
@@ -336,7 +352,31 @@ export default function StatsTab() {
               <div style={{ width: 10, height: 10, borderRadius: 2, background: 'transparent', border: '1px solid var(--ds-border)' }} />
               <span className="text-[10px]" style={{ color: 'var(--ds-text-tertiary)' }}>미평가</span>
             </div>
+            <div className="flex items-center gap-1 ml-auto">
+              <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--ds-accent)', display: 'inline-block' }} />
+              <span className="text-[10px]" style={{ color: 'var(--ds-text-tertiary)' }}>메모</span>
+            </div>
           </div>
+
+          {/* 메모 팝업 — 날짜 헤더 클릭 시 표시 */}
+          {memoPopup && (
+            <div className="mt-2.5 rounded-xl p-3" style={{ background: 'var(--ds-bg)', border: '1px solid var(--ds-border)' }}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <StickyNote size={12} style={{ color: 'var(--ds-accent)' }} />
+                  <span className="text-[11px] font-semibold" style={{ color: 'var(--ds-text-secondary)' }}>
+                    {memoPopup.label}
+                  </span>
+                </div>
+                <button onClick={() => setMemoPopup(null)} style={{ color: 'var(--ds-text-tertiary)', lineHeight: 1 }}>
+                  <X size={14} />
+                </button>
+              </div>
+              <p className="text-[12px] whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--ds-text-primary)' }}>
+                {memoPopup.text}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
