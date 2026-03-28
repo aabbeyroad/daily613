@@ -445,15 +445,29 @@ export default function WeeklyTab() {
 
             {/* 스케줄 블록 */}
             {scheduleBlocks.filter(b => b.dayOfWeek === day).map(block => {
-              const topSlot  = hourToSlot(block.startHour);
+              const topSlot   = hourToSlot(block.startHour);
               const spanSlots = (block.endHour - block.startHour) * 2;
+              const blockH    = spanSlots * CELL_H - 2;
+
+              // 블록 높이 기반으로 표시 가능한 루틴 수 계산
+              const LABEL_H   = 13; // 라벨 줄 높이 (px)
+              const ROUTINE_H = 10; // 루틴 한 줄 높이 (px)
+              const MORE_H    =  9; // "+N개" 표시 줄 높이 (px)
+              const hasRoutines = spanSlots >= 2 && block.routineIds.length > 0;
+              const avail = hasRoutines ? blockH - (spanSlots >= 2 ? LABEL_H : 0) : 0;
+              const allFit = avail >= block.routineIds.length * ROUTINE_H;
+              const budget = allFit ? avail : avail - MORE_H;
+              const maxVisible  = hasRoutines ? Math.max(0, Math.floor(budget / ROUTINE_H)) : 0;
+              const visibleIds  = block.routineIds.slice(0, maxVisible);
+              const hiddenCount = block.routineIds.length - visibleIds.length;
+
               return (
                 <div
                   key={block.id}
                   style={{
                     position: 'absolute',
                     top: topSlot * CELL_H + 1,
-                    height: spanSlots * CELL_H - 2,
+                    height: blockH,
                     left: 1, right: 1,
                     backgroundColor: block.color + '55',
                     borderLeft: `3px solid ${block.color + 'CC'}`,
@@ -466,12 +480,17 @@ export default function WeeklyTab() {
                       {block.label || '─'}
                     </p>
                   )}
-                  {spanSlots >= 4 && block.routineIds.slice(0, 2).map(id => {
+                  {visibleIds.map(id => {
                     const r = routines.find(r => r.id === id);
                     return r ? (
                       <p key={id} className="text-[8px] px-1 truncate leading-tight" style={{ color: 'rgba(255,255,255,0.85)' }}>{r.name}</p>
                     ) : null;
                   })}
+                  {hiddenCount > 0 && (
+                    <p className="text-[7px] px-1 leading-none" style={{ color: 'rgba(255,255,255,0.6)', position: 'absolute', bottom: 2, right: 3 }}>
+                      +{hiddenCount}개
+                    </p>
+                  )}
                 </div>
               );
             })}
