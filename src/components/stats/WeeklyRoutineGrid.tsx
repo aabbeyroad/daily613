@@ -179,11 +179,11 @@ export default function WeeklyRoutineGrid({ weekAnchor }: { weekAnchor?: Date })
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded bg-more" />
-            <span className="text-[10px] text-text-tertiary">More</span>
+            <span className="text-[10px] text-text-tertiary">Enough</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded bg-max" />
-            <span className="text-[10px] text-text-tertiary">Max</span>
+            <span className="text-[10px] text-text-tertiary">Full</span>
           </div>
         </div>
       </div>

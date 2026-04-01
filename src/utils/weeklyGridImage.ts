@@ -176,7 +176,7 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
         const goalText = level === 'done' ? routine.doneGoal
                        : level === 'more' ? routine.moreGoal
                        : routine.maxGoal;
-        const displayText = goalText || (level === 'done' ? 'Done' : level === 'more' ? 'More' : 'Max');
+        const displayText = goalText || (level === 'done' ? 'Done' : level === 'more' ? 'Enough' : 'Full');
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 7px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         ctx.textAlign = 'center';
@@ -239,8 +239,8 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
   const legendItems: { label: string; color: string }[] = [
     { label: '미완료', color: LEVEL_COLORS.none },
     { label: 'Done', color: LEVEL_COLORS.done },
-    { label: 'More', color: LEVEL_COLORS.more },
-    { label: 'Max', color: LEVEL_COLORS.max },
+    { label: 'Enough', color: LEVEL_COLORS.more },
+    { label: 'Full', color: LEVEL_COLORS.max },
   ];
 
   // Divider above legend

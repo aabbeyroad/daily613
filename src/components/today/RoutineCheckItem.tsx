@@ -11,8 +11,8 @@ interface Props {
 
 const levels: { key: CheckLevel; label: string; color: string; bg: string }[] = [
   { key: 'done', label: 'Done', color: 'var(--color-done)', bg: 'rgba(52, 168, 83, 0.9)' },
-  { key: 'more', label: 'More', color: 'var(--color-more)', bg: 'rgba(59, 130, 246, 0.9)' },
-  { key: 'max', label: 'Max', color: 'var(--color-max)', bg: 'rgba(109, 91, 208, 0.92)' },
+  { key: 'more', label: 'Enough', color: 'var(--color-more)', bg: 'rgba(59, 130, 246, 0.9)' },
+  { key: 'max', label: 'Full', color: 'var(--color-max)', bg: 'rgba(109, 91, 208, 0.92)' },
 ];
 
 export default function RoutineCheckItem({ routine, currentLevel, onToggle }: Props) {

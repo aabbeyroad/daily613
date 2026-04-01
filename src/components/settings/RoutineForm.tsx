@@ -208,11 +208,11 @@ export default function RoutineForm({ routine, onClose }: Props) {
           ) : null}
         </SectionCard>
 
-        <SectionCard title="단계별 목표" subtitle="Done, More, Max의 기준을 동일한 입력 구조로 맞춥니다.">
+        <SectionCard title="단계별 목표" subtitle="Done, Enough, Full의 기준을 동일한 입력 구조로 맞춥니다.">
           <div className="space-y-3">
             <Input label="Done" value={doneGoal} onChange={(e) => setDoneGoal(e.target.value)} placeholder="최소 목표 (예: 10분)" />
-            <Input label="More" value={moreGoal} onChange={(e) => setMoreGoal(e.target.value)} placeholder="중간 목표 (예: 30분)" />
-            <Input label="Max" value={maxGoal} onChange={(e) => setMaxGoal(e.target.value)} placeholder="최대 목표 (예: 1시간)" />
+            <Input label="Enough" value={moreGoal} onChange={(e) => setMoreGoal(e.target.value)} placeholder="중간 목표 (예: 30분)" />
+            <Input label="Full" value={maxGoal} onChange={(e) => setMaxGoal(e.target.value)} placeholder="최대 목표 (예: 1시간)" />
           </div>
         </SectionCard>
 

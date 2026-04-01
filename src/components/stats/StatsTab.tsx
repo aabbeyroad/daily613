@@ -124,8 +124,8 @@ export default function StatsTab() {
       });
     });
     return [
-      { name: 'Max', value: maxCount, color: LEVEL_COLORS.max },
-      { name: 'More', value: moreCount, color: LEVEL_COLORS.more },
+      { name: 'Full', value: maxCount, color: LEVEL_COLORS.max },
+      { name: 'Enough', value: moreCount, color: LEVEL_COLORS.more },
       { name: 'Done', value: doneCount, color: LEVEL_COLORS.done },
       { name: '미달성', value: noneCount, color: LEVEL_COLORS.none },
     ].filter((d) => d.value > 0);
@@ -217,8 +217,8 @@ export default function StatsTab() {
           </div>
           <div className="text-right space-y-0.5">
             <div className="text-[10px] text-done font-medium">Done = 1pt</div>
-            <div className="text-[10px] text-more font-medium">More = 2pt</div>
-            <div className="text-[10px] text-max font-medium">Max = 3pt</div>
+            <div className="text-[10px] text-more font-medium">Enough = 2pt</div>
+            <div className="text-[10px] text-max font-medium">Full = 3pt</div>
           </div>
         </div>
       </div>
