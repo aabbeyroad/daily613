@@ -79,7 +79,7 @@ export const sendDiscordReport = async (
   const fields = [
     { 
       name: '📊 달성 현황', 
-      value: `Done: ${doneCount}/${total} | More: ${moreCount}/${total} | Max: ${maxCount}/${total}\n달성률: **${rate}%**`, 
+      value: `Done: ${doneCount}/${total} | Enough: ${moreCount}/${total} | Full: ${maxCount}/${total}\n달성률: **${rate}%**`,
       inline: false 
     },
     { 

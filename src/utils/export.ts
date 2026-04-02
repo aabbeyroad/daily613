@@ -264,7 +264,8 @@ export const exportObsidianNote = (
     else if (level === 'more' && routine.moreGoal) goalText = ` (${routine.moreGoal})`;
     else if (level === 'max' && routine.maxGoal) goalText = ` (${routine.maxGoal})`;
     const iconPrefix = routine.icon && !routine.icon.startsWith('lucide:') ? `${routine.icon} ` : '';
-    const levelText = level === 'none' ? '-' : `**${level.toUpperCase()}**${goalText}`;
+    const levelLabel = level === 'done' ? 'Done' : level === 'more' ? 'Enough' : 'Full';
+    const levelText = level === 'none' ? '-' : `**${levelLabel}**${goalText}`;
     md += `- ${emoji} ${iconPrefix}${routine.name}: ${levelText}\n`;
   });
   md += '\n';

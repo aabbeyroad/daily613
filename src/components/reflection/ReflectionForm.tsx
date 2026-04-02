@@ -412,8 +412,8 @@ export default function ReflectionForm({ date, type, existing, onClose }: Props)
                   {([
                     { color: 'var(--ds-bg-tertiary)', label: '미완료' },
                     { color: 'var(--color-done)',     label: 'Done' },
-                    { color: 'var(--color-more)',     label: 'More' },
-                    { color: 'var(--color-max)',      label: 'Max' },
+                    { color: 'var(--color-more)',     label: 'Enough' },
+                    { color: 'var(--color-max)',      label: 'Full' },
                   ] as const).map(({ color, label }) => (
                     <div key={label} className="flex items-center gap-1.5">
                       <div style={{ width: 10, height: 10, borderRadius: 3, background: color }} />
