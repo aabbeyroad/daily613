@@ -19,6 +19,7 @@ interface GridImageData {
   routines: Routine[];
   records: DailyRecord[];
   date: Date;
+  targetWidth?: number;
 }
 
 function getRateColor(rate: number): string {
@@ -28,7 +29,7 @@ function getRateColor(rate: number): string {
 }
 
 export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
-  const { routines, records, date } = data;
+  const { routines, records, date, targetWidth } = data;
   const activeRoutines = routines.filter((r) => !r.archived).sort((a, b) => a.order - b.order);
   const weekDays = getWeekDays(date);
   const todayStr = formatDate(date);
@@ -45,9 +46,13 @@ export function generateWeeklyGridImage(data: GridImageData): Promise<Blob> {
   const legendHeight = 26;
 
   const routineCount = activeRoutines.length;
-  const cellWidth = 60;
+  // Derive cellWidth from targetWidth if provided, otherwise default to 60
+  const fixedOverhead = padding * 2 + nameColWidth + 12 + 8 + rateColWidth; // 184
+  const cellWidth = targetWidth
+    ? Math.max(40, Math.floor((targetWidth - fixedOverhead + cellGap) / 7 - cellGap))
+    : 60;
   const gridWidth = 7 * (cellWidth + cellGap) - cellGap;
-  const canvasWidth = padding * 2 + nameColWidth + 12 + gridWidth + 8 + rateColWidth;
+  const canvasWidth = fixedOverhead + gridWidth;
   const canvasHeight = padding + headerHeight + dayHeaderHeight + routineCount * (rowHeight + cellGap) - cellGap + 6 + dailyRateRowHeight + 10 + legendHeight + padding;
 
   // Pre-calculate rates

@@ -70,7 +70,8 @@ export const sendDiscordReport = async (
         goalText = r.maxGoal ? ` (${r.maxGoal})` : '';
       }
       
-      const levelText = level === 'none' ? '-' : `**${level.toUpperCase()}**${goalText}`;
+      const levelLabel = level === 'done' ? 'Done' : level === 'more' ? 'Enough' : 'Full';
+      const levelText = level === 'none' ? '-' : `**${levelLabel}**${goalText}`;
       const iconPrefix = r.icon && !r.icon.startsWith('lucide:') ? `${r.icon} ` : '';
       return `${emoji} ${iconPrefix}${r.name}: ${levelText}`;
     })
@@ -133,6 +134,7 @@ export const sendDiscordReport = async (
         routines,
         records: records || [],
         date: new Date(date),
+        targetWidth: window.innerWidth,
       });
     } catch (e) {
       console.warn('주간 루틴 이미지 생성 실패:', e instanceof Error ? e.message : e);
